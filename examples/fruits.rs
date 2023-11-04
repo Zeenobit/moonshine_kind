@@ -1,23 +1,26 @@
 use bevy::prelude::*;
 use moonshine_kind::prelude::*;
 
-// Components
+// Represents an Apple. Apples are crunchy!
 #[derive(Component)]
 struct Apple;
 
+// Represents an Orange. Oranges are juicy!
 #[derive(Component)]
 struct Orange;
 
-// Kinds
+// All Apples and Oranges are Fruits.
 struct Fruit;
 
 impl Kind for Fruit {
     type Filter = Or<(With<Apple>, With<Orange>)>;
 }
 
+// Represents a Human. Humans can eat Fruits.
 #[derive(Component)]
 struct Human;
 
+// Extension trait to allow all instances of Human to eat an instance of a Fruit.
 trait EatFruit {
     fn eat(self, fruit: Instance<Fruit>) -> Self;
 }
@@ -29,6 +32,7 @@ impl EatFruit for &mut InstanceCommands<'_, '_, '_, Human> {
     }
 }
 
+// A components which signals `human_eat` to actually eat the fruit.
 #[derive(Component)]
 struct Eat(Instance<Fruit>);
 
@@ -74,7 +78,7 @@ fn human_eat(
         } else {
             println!("{human:?} ate a mysterious {fruit:?}");
         }
-        commands.entity(fruit.entity()).despawn();
+        commands.instance(*fruit).despawn();
         commands.instance(human).remove::<Eat>();
     }
 }
