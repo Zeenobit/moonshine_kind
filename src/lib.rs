@@ -219,10 +219,6 @@ unsafe impl<T: Kind> WorldQuery for Instance<T> {
         <T::Filter as WorldQuery>::init_fetch(world, state, last_change_tick, change_tick)
     }
 
-    unsafe fn clone_fetch<'w>(fetch: &Self::Fetch<'w>) -> Self::Fetch<'w> {
-        <T::Filter as WorldQuery>::clone_fetch(fetch)
-    }
-
     const IS_DENSE: bool = <T::Filter as WorldQuery>::IS_DENSE;
 
     const IS_ARCHETYPAL: bool = <T::Filter as WorldQuery>::IS_ARCHETYPAL;
@@ -452,44 +448,7 @@ impl<'w, 's, 'a, T: Kind> DerefMut for InstanceCommands<'w, 's, 'a, T> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bevy::prelude::*;
-
-    // TODO: Remove in Bevy 0.12
-    pub trait RunSystem: Sized {
-        fn run_system<T: IntoSystem<(), Out, Marker>, Out, Marker>(self, system: T) -> Out {
-            self.run_system_with((), system)
-        }
-
-        fn run_system_with<T: IntoSystem<In, Out, Marker>, In, Out, Marker>(
-            self,
-            input: In,
-            system: T,
-        ) -> Out;
-    }
-
-    impl RunSystem for &mut World {
-        fn run_system_with<T: IntoSystem<In, Out, Marker>, In, Out, Marker>(
-            self,
-            input: In,
-            system: T,
-        ) -> Out {
-            let mut system: T::System = IntoSystem::into_system(system);
-            system.initialize(self);
-            let out = system.run(input, self);
-            system.apply_deferred(self);
-            out
-        }
-    }
-
-    impl RunSystem for &mut App {
-        fn run_system_with<T: IntoSystem<In, Out, Marker>, In, Out, Marker>(
-            self,
-            input: In,
-            system: T,
-        ) -> Out {
-            self.world.run_system_with(input, system)
-        }
-    }
+    use bevy_ecs::system::RunSystemOnce;
 
     #[derive(Component)]
     struct Foo;
@@ -505,7 +464,7 @@ mod tests {
     fn kind_with() {
         let mut world = World::new();
         world.spawn(Foo);
-        assert_eq!(world.run_system(count::<Foo>), 1);
+        assert_eq!(world.run_system_once(count::<Foo>), 1);
     }
 
     #[test]
@@ -518,15 +477,15 @@ mod tests {
 
         let mut world = World::new();
         world.spawn(Foo);
-        assert_eq!(world.run_system(count::<NotFoo>), 0);
+        assert_eq!(world.run_system_once(count::<NotFoo>), 0);
     }
 
     #[test]
     fn kind_multi() {
         let mut world = World::new();
         world.spawn((Foo, Bar));
-        assert_eq!(world.run_system(count::<Foo>), 1);
-        assert_eq!(world.run_system(count::<Bar>), 1);
+        assert_eq!(world.run_system_once(count::<Foo>), 1);
+        assert_eq!(world.run_system_once(count::<Bar>), 1);
     }
 
     #[test]
