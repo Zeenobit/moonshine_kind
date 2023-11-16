@@ -336,6 +336,12 @@ impl<T: Kind + Component> Deref for InstanceRefItem<'_, T> {
     }
 }
 
+impl<T: Kind + Component> fmt::Debug for InstanceRefItem<'_, T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self.instance())
+    }
+}
+
 #[derive(WorldQuery)]
 #[world_query(mutable)]
 pub struct InstanceMut<T: Kind + Component> {
@@ -369,6 +375,12 @@ impl<T: Kind + Component> Deref for InstanceMutReadOnlyItem<'_, T> {
     }
 }
 
+impl<T: Kind + Component> fmt::Debug for InstanceMutReadOnlyItem<'_, T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self.instance())
+    }
+}
+
 impl<T: Kind + Component> InstanceMutItem<'_, T> {
     #[must_use]
     pub fn entity(&self) -> Entity {
@@ -398,6 +410,12 @@ impl<T: Kind + Component> Deref for InstanceMutItem<'_, T> {
 impl<T: Kind + Component> DerefMut for InstanceMutItem<'_, T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.data.as_mut()
+    }
+}
+
+impl<T: Kind + Component> fmt::Debug for InstanceMutItem<'_, T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self.instance())
     }
 }
 
