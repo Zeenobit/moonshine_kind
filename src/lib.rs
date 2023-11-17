@@ -451,8 +451,16 @@ impl<'w, 's, T: Kind> GetInstanceCommands<'w, 's, T> for Commands<'w, 's> {
 pub struct InstanceCommands<'w, 's, 'a, T: Kind>(EntityCommands<'w, 's, 'a>, PhantomData<T>);
 
 impl<'w, 's, 'a, T: Kind> InstanceCommands<'w, 's, 'a, T> {
+    /// # Safety
+    /// Assumes `entity` is a valid instance of kind `T`.
+    #[must_use]
+    pub unsafe fn from_entity_unchecked(entity: EntityCommands<'w, 's, 'a>) -> Self {
+        Self(entity, PhantomData)
+    }
+
     #[must_use]
     pub fn instance(&self) -> Instance<T> {
+        // SAFE: `self.entity()` must be a valid instance of kind `T`.
         unsafe { Instance::from_entity_unchecked(self.entity()) }
     }
 
@@ -478,6 +486,24 @@ impl<'w, 's, 'a, T: Kind> Deref for InstanceCommands<'w, 's, 'a, T> {
 impl<'w, 's, 'a, T: Kind> DerefMut for InstanceCommands<'w, 's, 'a, T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
+    }
+}
+
+pub trait SpawnInstance<'w, 's> {
+    fn spawn_instance<T: Kind + Component>(
+        &mut self,
+        instance: T,
+    ) -> InstanceCommands<'w, 's, '_, T>;
+}
+
+impl<'w, 's> SpawnInstance<'w, 's> for Commands<'w, 's> {
+    fn spawn_instance<T: Kind + Component>(
+        &mut self,
+        instance: T,
+    ) -> InstanceCommands<'w, 's, '_, T> {
+        let entity = self.spawn(instance).id();
+        // SAFE: `entity` must be a valid instance of kind `T`.
+        unsafe { InstanceCommands::from_entity_unchecked(self.entity(entity)) }
     }
 }
 
