@@ -22,6 +22,7 @@ use bevy_reflect::Reflect;
 pub mod prelude {
     pub use super::{
         GetInstanceCommands, Instance, InstanceCommands, InstanceMut, InstanceRef, Kind,
+        SpawnInstance, WithKind,
     };
 }
 
@@ -436,6 +437,8 @@ impl<T: Kind + Component> fmt::Debug for InstanceMutItem<'_, T> {
         write!(f, "{:?}", self.instance())
     }
 }
+
+pub type WithKind<T> = <T as Kind>::Filter;
 
 pub trait GetInstanceCommands<'w, 's, T: Kind> {
     fn instance(&mut self, _: impl Into<Instance<T>>) -> InstanceCommands<'w, 's, '_, T>;
