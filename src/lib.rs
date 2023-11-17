@@ -328,6 +328,12 @@ impl<T: Kind + Component> From<InstanceRefItem<'_, T>> for Instance<T> {
     }
 }
 
+impl<T: Kind + Component> From<&InstanceRefItem<'_, T>> for Instance<T> {
+    fn from(item: &InstanceRefItem<T>) -> Self {
+        item.instance()
+    }
+}
+
 impl<T: Kind + Component> Deref for InstanceRefItem<'_, T> {
     type Target = T;
 
@@ -367,6 +373,12 @@ impl<T: Kind + Component> From<InstanceMutReadOnlyItem<'_, T>> for Instance<T> {
     }
 }
 
+impl<T: Kind + Component> From<&InstanceMutReadOnlyItem<'_, T>> for Instance<T> {
+    fn from(item: &InstanceMutReadOnlyItem<T>) -> Self {
+        item.instance()
+    }
+}
+
 impl<T: Kind + Component> Deref for InstanceMutReadOnlyItem<'_, T> {
     type Target = T;
 
@@ -395,6 +407,12 @@ impl<T: Kind + Component> InstanceMutItem<'_, T> {
 
 impl<T: Kind + Component> From<InstanceMutItem<'_, T>> for Instance<T> {
     fn from(item: InstanceMutItem<T>) -> Self {
+        item.instance
+    }
+}
+
+impl<T: Kind + Component> From<&InstanceMutItem<'_, T>> for Instance<T> {
+    fn from(item: &InstanceMutItem<T>) -> Self {
         item.instance
     }
 }
