@@ -25,7 +25,7 @@ trait EatFruit {
     fn eat(self, fruit: Instance<Fruit>) -> Self;
 }
 
-impl EatFruit for &mut InstanceCommands<'_, '_, '_, Human> {
+impl EatFruit for &mut InstanceCommands<'_, Human> {
     fn eat(self, fruit: Instance<Fruit>) -> Self {
         self.insert(Eat(fruit));
         self
@@ -51,7 +51,7 @@ fn setup(mut commands: Commands) {
     commands.spawn_batch([Orange, Orange, Orange]);
 }
 
-fn should_eat(input: Res<Input<KeyCode>>) -> bool {
+fn should_eat(input: Res<ButtonInput<KeyCode>>) -> bool {
     input.just_pressed(KeyCode::Space)
 }
 

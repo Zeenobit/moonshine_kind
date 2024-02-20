@@ -8,11 +8,11 @@ use std::{
 };
 
 use bevy_ecs::{
-    archetype::{Archetype, ArchetypeComponentId},
+    archetype::Archetype,
     component::{ComponentId, Tick},
     entity::{EntityMapper, MapEntities},
     prelude::*,
-    query::{Access, FilteredAccess, ReadOnlyWorldQuery, WorldQuery},
+    query::{FilteredAccess, QueryData, QueryFilter, ReadOnlyQueryData, WorldQuery},
     storage::{Table, TableRow},
     system::EntityCommands,
     world::unsafe_world_cell::UnsafeWorldCell,
@@ -56,7 +56,7 @@ pub mod prelude {
 /// }
 /// ```
 pub trait Kind: 'static + Send + Sized + Sync {
-    type Filter: ReadOnlyWorldQuery;
+    type Filter: QueryFilter;
 
     /// Returns `true` if this kind is safely convertible to `U`.
     ///
@@ -203,8 +203,6 @@ unsafe impl<T: Kind> WorldQuery for Instance<T> {
 
     type Fetch<'a> = <T::Filter as WorldQuery>::Fetch<'a>;
 
-    type ReadOnly = Self;
-
     type State = <T::Filter as WorldQuery>::State;
 
     fn shrink<'wlong: 'wshort, 'wshort>(item: Self::Item<'wlong>) -> Self::Item<'wshort> {
@@ -221,8 +219,6 @@ unsafe impl<T: Kind> WorldQuery for Instance<T> {
     }
 
     const IS_DENSE: bool = <T::Filter as WorldQuery>::IS_DENSE;
-
-    const IS_ARCHETYPAL: bool = <T::Filter as WorldQuery>::IS_ARCHETYPAL;
 
     unsafe fn set_archetype<'w>(
         _fetch: &mut Self::Fetch<'w>,
@@ -248,11 +244,8 @@ unsafe impl<T: Kind> WorldQuery for Instance<T> {
         <T::Filter as WorldQuery>::update_component_access(state, access)
     }
 
-    fn update_archetype_component_access(
-        _state: &Self::State,
-        _archetype: &Archetype,
-        _access: &mut Access<ArchetypeComponentId>,
-    ) {
+    fn get_state(world: &World) -> Option<Self::State> {
+        <T::Filter as WorldQuery>::get_state(world)
     }
 
     fn init_state(world: &mut World) -> Self::State {
@@ -267,11 +260,15 @@ unsafe impl<T: Kind> WorldQuery for Instance<T> {
     }
 }
 
-unsafe impl<T: Kind> ReadOnlyWorldQuery for Instance<T> {}
+unsafe impl<T: Kind> ReadOnlyQueryData for Instance<T> {}
+
+unsafe impl<T: Kind> QueryData for Instance<T> {
+    type ReadOnly = Self;
+}
 
 impl<T: Kind> MapEntities for Instance<T> {
-    fn map_entities(&mut self, entity_mapper: &mut EntityMapper) {
-        self.0 = entity_mapper.get_or_reserve(self.0);
+    fn map_entities<M: EntityMapper>(&mut self, entity_mapper: &mut M) {
+        self.0 = entity_mapper.map_entity(self.0);
     }
 }
 
@@ -305,7 +302,7 @@ impl<T: Kind, U: Kind> fmt::Debug for CastError<T, U> {
     }
 }
 
-#[derive(WorldQuery)]
+#[derive(QueryData)]
 pub struct InstanceRef<T: Kind + Component> {
     instance: Instance<T>,
     data: &'static T,
@@ -349,8 +346,8 @@ impl<T: Kind + Component> fmt::Debug for InstanceRefItem<'_, T> {
     }
 }
 
-#[derive(WorldQuery)]
-#[world_query(mutable)]
+#[derive(QueryData)]
+#[query_data(mutable)]
 pub struct InstanceMut<T: Kind + Component> {
     instance: Instance<T>,
     data: &'static mut T,
@@ -440,24 +437,24 @@ impl<T: Kind + Component> fmt::Debug for InstanceMutItem<'_, T> {
 
 pub type WithKind<T> = <T as Kind>::Filter;
 
-pub trait GetInstanceCommands<'w, 's, T: Kind> {
-    fn instance(&mut self, _: impl Into<Instance<T>>) -> InstanceCommands<'w, 's, '_, T>;
+pub trait GetInstanceCommands<T: Kind> {
+    fn instance(&mut self, _: impl Into<Instance<T>>) -> InstanceCommands<'_, T>;
 }
 
-impl<'w, 's, T: Kind> GetInstanceCommands<'w, 's, T> for Commands<'w, 's> {
-    fn instance(&mut self, instance: impl Into<Instance<T>>) -> InstanceCommands<'w, 's, '_, T> {
+impl<T: Kind> GetInstanceCommands<T> for Commands<'_, '_> {
+    fn instance(&mut self, instance: impl Into<Instance<T>>) -> InstanceCommands<'_, T> {
         let instance: Instance<T> = instance.into();
         InstanceCommands(self.entity(instance.entity()), PhantomData)
     }
 }
 
-pub struct InstanceCommands<'w, 's, 'a, T: Kind>(EntityCommands<'w, 's, 'a>, PhantomData<T>);
+pub struct InstanceCommands<'a, T: Kind>(EntityCommands<'a>, PhantomData<T>);
 
-impl<'w, 's, 'a, T: Kind> InstanceCommands<'w, 's, 'a, T> {
+impl<'a, T: Kind> InstanceCommands<'a, T> {
     /// # Safety
     /// Assumes `entity` is a valid instance of kind `T`.
     #[must_use]
-    pub unsafe fn from_entity_unchecked(entity: EntityCommands<'w, 's, 'a>) -> Self {
+    pub unsafe fn from_entity_unchecked(entity: EntityCommands<'a>) -> Self {
         Self(entity, PhantomData)
     }
 
@@ -473,37 +470,31 @@ impl<'w, 's, 'a, T: Kind> InstanceCommands<'w, 's, 'a, T> {
     }
 
     #[must_use]
-    pub fn as_entity(&mut self) -> &mut EntityCommands<'w, 's, 'a> {
+    pub fn as_entity(&mut self) -> &mut EntityCommands<'a> {
         &mut self.0
     }
 }
 
-impl<'w, 's, 'a, T: Kind> Deref for InstanceCommands<'w, 's, 'a, T> {
-    type Target = EntityCommands<'w, 's, 'a>;
+impl<'a, T: Kind> Deref for InstanceCommands<'a, T> {
+    type Target = EntityCommands<'a>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
 
-impl<'w, 's, 'a, T: Kind> DerefMut for InstanceCommands<'w, 's, 'a, T> {
+impl<'a, T: Kind> DerefMut for InstanceCommands<'a, T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
     }
 }
 
 pub trait SpawnInstance<'w, 's> {
-    fn spawn_instance<T: Kind + Component>(
-        &mut self,
-        instance: T,
-    ) -> InstanceCommands<'w, 's, '_, T>;
+    fn spawn_instance<T: Kind + Component>(&mut self, instance: T) -> InstanceCommands<'_, T>;
 }
 
 impl<'w, 's> SpawnInstance<'w, 's> for Commands<'w, 's> {
-    fn spawn_instance<T: Kind + Component>(
-        &mut self,
-        instance: T,
-    ) -> InstanceCommands<'w, 's, '_, T> {
+    fn spawn_instance<T: Kind + Component>(&mut self, instance: T) -> InstanceCommands<'_, T> {
         let entity = self.spawn(instance).id();
         // SAFE: `entity` must be a valid instance of kind `T`.
         unsafe { InstanceCommands::from_entity_unchecked(self.entity(entity)) }
