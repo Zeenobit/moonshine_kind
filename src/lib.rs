@@ -22,7 +22,7 @@ use bevy_reflect::Reflect;
 pub mod prelude {
     pub use super::{
         GetInstanceCommands, Instance, InstanceCommands, InstanceMut, InstanceRef, Kind,
-        SpawnInstance, WithKind,
+        SpawnInstance, SpawnInstanceWorld, WithKind,
     };
 }
 
@@ -308,7 +308,16 @@ pub struct InstanceRef<T: Kind + Component> {
     data: &'static T,
 }
 
-impl<T: Kind + Component> InstanceRefItem<'_, T> {
+impl<'a, T: Kind + Component> InstanceRefItem<'a, T> {
+    #[must_use]
+    pub fn from_entity(entity: EntityRef<'a>) -> Option<Self> {
+        Some(Self {
+            data: entity.get()?,
+            // SAFE: Kind is validated by `entity.get()` above.
+            instance: unsafe { Instance::from_entity_unchecked(entity.id()) },
+        })
+    }
+
     #[must_use]
     pub fn entity(&self) -> Entity {
         self.instance.entity()
@@ -338,6 +347,8 @@ impl<T: Kind + Component> PartialEq for InstanceRefItem<'_, T> {
     }
 }
 
+impl<T: Kind + Component> Eq for InstanceRefItem<'_, T> {}
+
 impl<T: Kind + Component> Deref for InstanceRefItem<'_, T> {
     type Target = T;
 
@@ -359,7 +370,7 @@ pub struct InstanceMut<T: Kind + Component> {
     data: &'static mut T,
 }
 
-impl<T: Kind + Component> InstanceMutReadOnlyItem<'_, T> {
+impl<'a, T: Kind + Component> InstanceMutReadOnlyItem<'a, T> {
     #[must_use]
     pub fn entity(&self) -> Entity {
         self.instance.entity()
@@ -389,6 +400,8 @@ impl<T: Kind + Component> PartialEq for InstanceMutReadOnlyItem<'_, T> {
     }
 }
 
+impl<T: Kind + Component> Eq for InstanceMutReadOnlyItem<'_, T> {}
+
 impl<T: Kind + Component> Deref for InstanceMutReadOnlyItem<'_, T> {
     type Target = T;
 
@@ -403,7 +416,17 @@ impl<T: Kind + Component> fmt::Debug for InstanceMutReadOnlyItem<'_, T> {
     }
 }
 
-impl<T: Kind + Component> InstanceMutItem<'_, T> {
+impl<'a, T: Kind + Component> InstanceMutItem<'a, T> {
+    #[must_use]
+    pub fn from_entity(world: &'a mut World, entity: Entity) -> Option<Self> {
+        // TODO: Why can't I just pass `EntityWorldMut<'a>` here?
+        world.get_mut(entity).map(|data| Self {
+            data,
+            // SAFE: Kind is validated by `entity.get()` above.
+            instance: unsafe { Instance::from_entity_unchecked(entity) },
+        })
+    }
+
     #[must_use]
     pub fn entity(&self) -> Entity {
         self.instance.entity()
@@ -432,6 +455,7 @@ impl<T: Kind + Component> PartialEq for InstanceMutItem<'_, T> {
         self.instance == other.instance
     }
 }
+impl<T: Kind + Component> Eq for InstanceMutItem<'_, T> {}
 
 impl<T: Kind + Component> Deref for InstanceMutItem<'_, T> {
     type Target = T;
@@ -507,15 +531,27 @@ impl<'a, T: Kind> DerefMut for InstanceCommands<'a, T> {
     }
 }
 
-pub trait SpawnInstance<'w, 's> {
+pub trait SpawnInstance {
     fn spawn_instance<T: Kind + Component>(&mut self, instance: T) -> InstanceCommands<'_, T>;
 }
 
-impl<'w, 's> SpawnInstance<'w, 's> for Commands<'w, 's> {
+impl SpawnInstance for Commands<'_, '_> {
     fn spawn_instance<T: Kind + Component>(&mut self, instance: T) -> InstanceCommands<'_, T> {
         let entity = self.spawn(instance).id();
         // SAFE: `entity` must be a valid instance of kind `T`.
         unsafe { InstanceCommands::from_entity_unchecked(self.entity(entity)) }
+    }
+}
+
+pub trait SpawnInstanceWorld {
+    fn spawn_instance<T: Kind + Component>(&mut self, instance: T) -> InstanceMutItem<'_, T>;
+}
+
+impl SpawnInstanceWorld for World {
+    fn spawn_instance<T: Kind + Component>(&mut self, instance: T) -> InstanceMutItem<'_, T> {
+        let entity = self.spawn(instance).id();
+        // SAFE: `entity` must be a valid instance of kind `T`.
+        InstanceMutItem::from_entity(self, entity).unwrap()
     }
 }
 
