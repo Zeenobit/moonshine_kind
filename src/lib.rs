@@ -332,6 +332,12 @@ impl<T: Kind + Component> From<&InstanceRefItem<'_, T>> for Instance<T> {
     }
 }
 
+impl<T: Kind + Component> PartialEq for InstanceRefItem<'_, T> {
+    fn eq(&self, other: &Self) -> bool {
+        self.instance == other.instance
+    }
+}
+
 impl<T: Kind + Component> Deref for InstanceRefItem<'_, T> {
     type Target = T;
 
@@ -377,6 +383,12 @@ impl<T: Kind + Component> From<&InstanceMutReadOnlyItem<'_, T>> for Instance<T> 
     }
 }
 
+impl<T: Kind + Component> PartialEq for InstanceMutReadOnlyItem<'_, T> {
+    fn eq(&self, other: &Self) -> bool {
+        self.instance == other.instance
+    }
+}
+
 impl<T: Kind + Component> Deref for InstanceMutReadOnlyItem<'_, T> {
     type Target = T;
 
@@ -412,6 +424,12 @@ impl<T: Kind + Component> From<InstanceMutItem<'_, T>> for Instance<T> {
 impl<T: Kind + Component> From<&InstanceMutItem<'_, T>> for Instance<T> {
     fn from(item: &InstanceMutItem<T>) -> Self {
         item.instance
+    }
+}
+
+impl<T: Kind + Component> PartialEq for InstanceMutItem<'_, T> {
+    fn eq(&self, other: &Self) -> bool {
+        self.instance == other.instance
     }
 }
 
