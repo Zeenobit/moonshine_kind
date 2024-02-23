@@ -21,8 +21,8 @@ use bevy_reflect::Reflect;
 
 pub mod prelude {
     pub use super::{
-        GetInstanceCommands, Instance, InstanceCommands, InstanceMut, InstanceRef, Kind,
-        SpawnInstance, SpawnInstanceWorld, WithKind,
+        GetInstanceCommands, Instance, InstanceCommands, InstanceMut, InstanceRef, InstanceRefItem,
+        Kind, SpawnInstance, SpawnInstanceWorld, WithKind,
     };
 }
 
