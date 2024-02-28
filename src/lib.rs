@@ -21,8 +21,9 @@ use bevy_reflect::Reflect;
 
 pub mod prelude {
     pub use super::{
-        GetInstanceCommands, Instance, InstanceCommands, InstanceMut, InstanceRef, InstanceRefItem,
-        Kind, SpawnInstance, SpawnInstanceWorld, WithKind,
+        GetInstanceCommands, GetInstanceRefCommands, Instance, InstanceCommands, InstanceMut,
+        InstanceRef, InstanceRefCommands, InstanceRefItem, Kind, SpawnInstance, SpawnInstanceWorld,
+        WithKind,
     };
 }
 
@@ -490,6 +491,20 @@ impl<T: Kind> GetInstanceCommands<T> for Commands<'_, '_> {
     }
 }
 
+pub trait GetInstanceRefCommands<T: Kind + Component> {
+    fn instance_ref<'a>(&'a mut self, _: &'a InstanceRefItem<T>) -> InstanceRefCommands<'a, T>;
+}
+
+impl<T: Kind + Component> GetInstanceRefCommands<T> for Commands<'_, '_> {
+    fn instance_ref<'a>(
+        &'a mut self,
+        InstanceRefItem { instance, data }: &'a InstanceRefItem<T>,
+    ) -> InstanceRefCommands<'a, T> {
+        let instance = self.instance(*instance);
+        InstanceRefCommands(instance, data)
+    }
+}
+
 pub struct InstanceCommands<'a, T: Kind>(EntityCommands<'a>, PhantomData<T>);
 
 impl<'a, T: Kind> InstanceCommands<'a, T> {
@@ -526,6 +541,51 @@ impl<'a, T: Kind> Deref for InstanceCommands<'a, T> {
 }
 
 impl<'a, T: Kind> DerefMut for InstanceCommands<'a, T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+pub struct InstanceRefCommands<'a, T: Kind>(InstanceCommands<'a, T>, &'a T);
+
+impl<'a, T: Kind> InstanceRefCommands<'a, T> {
+    /// # Safety
+    /// Assumes `entity` is a valid instance of kind `T`.
+    #[must_use]
+    pub unsafe fn from_entity_unchecked(entity: EntityCommands<'a>, data: &'a T) -> Self {
+        Self(InstanceCommands::from_entity_unchecked(entity), data)
+    }
+
+    #[must_use]
+    pub fn instance(&self) -> Instance<T> {
+        self.0.instance()
+    }
+
+    #[must_use]
+    pub fn entity(&self) -> Entity {
+        self.0.entity()
+    }
+
+    #[must_use]
+    pub fn get(&self) -> &T {
+        self.1
+    }
+
+    #[must_use]
+    pub fn as_entity(&mut self) -> &mut EntityCommands<'a> {
+        self.0.as_entity()
+    }
+}
+
+impl<'a, T: Kind> Deref for InstanceRefCommands<'a, T> {
+    type Target = EntityCommands<'a>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<'a, T: Kind> DerefMut for InstanceRefCommands<'a, T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
     }
