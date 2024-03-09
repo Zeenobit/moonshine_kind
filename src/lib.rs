@@ -159,6 +159,18 @@ impl<T: Kind> Instance<T> {
     }
 }
 
+impl<T: Kind + Component> Instance<T> {
+    #[must_use]
+    pub fn from_entity(entity: EntityRef) -> Option<Self> {
+        if entity.contains::<T>() {
+            // SAFE: `entity` must be of kind `T`.
+            Some(unsafe { Self::from_entity_unchecked(entity.id()) })
+        } else {
+            None
+        }
+    }
+}
+
 impl<T: Kind> Clone for Instance<T> {
     fn clone(&self) -> Self {
         *self
