@@ -1,5 +1,4 @@
 use std::{
-    any::TypeId,
     cmp::Ordering,
     fmt,
     hash::{Hash, Hasher},
@@ -58,14 +57,6 @@ pub mod prelude {
 /// ```
 pub trait Kind: 'static + Send + Sized + Sync {
     type Filter: QueryFilter;
-
-    /// Returns `true` if this kind is safely convertible to `U`.
-    ///
-    /// By default, this kind is convertible to `U` if they are the same type or `U` is [`Any`].
-    #[must_use]
-    fn is_convertible_to<U: Kind>() -> bool {
-        TypeId::of::<U>() == TypeId::of::<Self>() || TypeId::of::<U>() == TypeId::of::<Any>()
-    }
 
     /// Returns the debug name of this kind.
     ///
@@ -127,6 +118,8 @@ impl Kind for Any {
 pub struct Instance<T: Kind>(Entity, #[reflect(ignore)] PhantomData<T>);
 
 impl<T: Kind> Instance<T> {
+    pub const PLACEHOLDER: Self = Self(Entity::PLACEHOLDER, PhantomData);
+
     /// Creates a new instance of kind `T` from some [`Entity`].
     ///
     /// # Safety
@@ -141,13 +134,11 @@ impl<T: Kind> Instance<T> {
     }
 
     /// Converts this instance into an instance of kind `U`.
-    pub fn cast_into<U: Kind>(self) -> Result<Instance<U>, CastError<T, U>> {
-        if T::is_convertible_to::<U>() {
-            // SAFE: `T` must be convertible to `U`.
-            Ok(unsafe { self.cast_into_unchecked() })
-        } else {
-            Err(CastError::new())
-        }
+    pub fn cast_into<U: Kind>(self) -> Instance<U>
+    where
+        T: CastInto<U>,
+    {
+        <T as CastInto<U>>::cast_into(self)
     }
 
     /// Converts this instance into an instance of kind `U` without checking if `T` is convertible.
@@ -297,21 +288,14 @@ impl From<Entity> for Instance<Any> {
     }
 }
 
-pub struct CastError<T, U>(PhantomData<(T, U)>);
-
-impl<T, U> CastError<T, U> {
-    #[must_use]
-    fn new() -> Self {
-        Self(PhantomData)
-    }
+pub trait CastInto<T: Kind>: Kind {
+    fn cast_into(instance: Instance<Self>) -> Instance<T>;
 }
 
-impl<T: Kind, U: Kind> fmt::Debug for CastError<T, U> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("CastError")
-            .field(&T::debug_name())
-            .field(&U::debug_name())
-            .finish()
+impl<T: Kind> CastInto<Any> for T {
+    fn cast_into(instance: Instance<T>) -> Instance<Any> {
+        // SAFE: `T` is convertible to `Any`.
+        unsafe { Instance::from_entity_unchecked(instance.entity()) }
     }
 }
 
@@ -672,10 +656,20 @@ mod tests {
 
     #[test]
     fn kind_cast() {
-        assert!(Any::is_convertible_to::<Any>());
-        assert!(Foo::is_convertible_to::<Foo>());
-        assert!(Foo::is_convertible_to::<Any>());
-        assert!(!Foo::is_convertible_to::<Bar>());
-        assert!(!Any::is_convertible_to::<Foo>());
+        impl CastInto<Bar> for Foo {
+            fn cast_into(instance: Instance<Self>) -> Instance<Bar> {
+                // SAFE: `Foo` is convertible to `FooBase`.
+                unsafe { Instance::from_entity_unchecked(instance.entity()) }
+            }
+        }
+
+        let any = Instance::<Any>::PLACEHOLDER;
+        let foo = Instance::<Foo>::PLACEHOLDER;
+        let bar = foo.cast_into::<Bar>();
+        assert!(foo.cast_into::<Any>() == any);
+        assert!(bar.cast_into::<Any>() == any);
+        // assert!(any.cast_into::<Foo>() == foo); // <-- Must not compile!
+        // assert!(bar.cast_into::<Foo>() == foo); // <-- Must not compile!
+        assert!(bar.entity() == foo.entity());
     }
 }
