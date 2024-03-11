@@ -21,8 +21,8 @@ use bevy_reflect::Reflect;
 pub mod prelude {
     pub use super::{
         GetInstanceCommands, GetInstanceRefCommands, Instance, InstanceCommands, InstanceMut,
-        InstanceMutItem, InstanceRef, InstanceRefCommands, InstanceRefItem, Kind, SpawnInstance,
-        SpawnInstanceWorld, WithKind,
+        InstanceMutItem, InstanceRef, InstanceRefCommands, InstanceRefItem, Kind, KindBundle,
+        SpawnInstance, SpawnInstanceWorld, WithKind,
     };
 }
 
@@ -150,7 +150,7 @@ impl<T: Kind> Instance<T> {
     }
 }
 
-impl<T: Kind + Component> Instance<T> {
+impl<T: Component> Instance<T> {
     #[must_use]
     pub fn from_entity(entity: EntityRef) -> Option<Self> {
         if entity.contains::<T>() {
@@ -300,12 +300,12 @@ impl<T: Kind> CastInto<Any> for T {
 }
 
 #[derive(QueryData)]
-pub struct InstanceRef<T: Kind + Component> {
+pub struct InstanceRef<T: Component> {
     instance: Instance<T>,
     data: &'static T,
 }
 
-impl<'a, T: Kind + Component> InstanceRefItem<'a, T> {
+impl<'a, T: Component> InstanceRefItem<'a, T> {
     #[must_use]
     pub fn from_entity(entity: EntityRef<'a>) -> Option<Self> {
         Some(Self {
@@ -326,27 +326,27 @@ impl<'a, T: Kind + Component> InstanceRefItem<'a, T> {
     }
 }
 
-impl<T: Kind + Component> From<InstanceRefItem<'_, T>> for Instance<T> {
+impl<T: Component> From<InstanceRefItem<'_, T>> for Instance<T> {
     fn from(item: InstanceRefItem<T>) -> Self {
         item.instance()
     }
 }
 
-impl<T: Kind + Component> From<&InstanceRefItem<'_, T>> for Instance<T> {
+impl<T: Component> From<&InstanceRefItem<'_, T>> for Instance<T> {
     fn from(item: &InstanceRefItem<T>) -> Self {
         item.instance()
     }
 }
 
-impl<T: Kind + Component> PartialEq for InstanceRefItem<'_, T> {
+impl<T: Component> PartialEq for InstanceRefItem<'_, T> {
     fn eq(&self, other: &Self) -> bool {
         self.instance == other.instance
     }
 }
 
-impl<T: Kind + Component> Eq for InstanceRefItem<'_, T> {}
+impl<T: Component> Eq for InstanceRefItem<'_, T> {}
 
-impl<T: Kind + Component> Deref for InstanceRefItem<'_, T> {
+impl<T: Component> Deref for InstanceRefItem<'_, T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
@@ -354,7 +354,7 @@ impl<T: Kind + Component> Deref for InstanceRefItem<'_, T> {
     }
 }
 
-impl<T: Kind + Component> fmt::Debug for InstanceRefItem<'_, T> {
+impl<T: Component> fmt::Debug for InstanceRefItem<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:?}", self.instance())
     }
@@ -362,12 +362,12 @@ impl<T: Kind + Component> fmt::Debug for InstanceRefItem<'_, T> {
 
 #[derive(QueryData)]
 #[query_data(mutable)]
-pub struct InstanceMut<T: Kind + Component> {
+pub struct InstanceMut<T: Component> {
     instance: Instance<T>,
     data: &'static mut T,
 }
 
-impl<'a, T: Kind + Component> InstanceMutReadOnlyItem<'a, T> {
+impl<'a, T: Component> InstanceMutReadOnlyItem<'a, T> {
     #[must_use]
     pub fn entity(&self) -> Entity {
         self.instance.entity()
@@ -379,27 +379,27 @@ impl<'a, T: Kind + Component> InstanceMutReadOnlyItem<'a, T> {
     }
 }
 
-impl<T: Kind + Component> From<InstanceMutReadOnlyItem<'_, T>> for Instance<T> {
+impl<T: Component> From<InstanceMutReadOnlyItem<'_, T>> for Instance<T> {
     fn from(item: InstanceMutReadOnlyItem<T>) -> Self {
         item.instance()
     }
 }
 
-impl<T: Kind + Component> From<&InstanceMutReadOnlyItem<'_, T>> for Instance<T> {
+impl<T: Component> From<&InstanceMutReadOnlyItem<'_, T>> for Instance<T> {
     fn from(item: &InstanceMutReadOnlyItem<T>) -> Self {
         item.instance()
     }
 }
 
-impl<T: Kind + Component> PartialEq for InstanceMutReadOnlyItem<'_, T> {
+impl<T: Component> PartialEq for InstanceMutReadOnlyItem<'_, T> {
     fn eq(&self, other: &Self) -> bool {
         self.instance == other.instance
     }
 }
 
-impl<T: Kind + Component> Eq for InstanceMutReadOnlyItem<'_, T> {}
+impl<T: Component> Eq for InstanceMutReadOnlyItem<'_, T> {}
 
-impl<T: Kind + Component> Deref for InstanceMutReadOnlyItem<'_, T> {
+impl<T: Component> Deref for InstanceMutReadOnlyItem<'_, T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
@@ -407,13 +407,13 @@ impl<T: Kind + Component> Deref for InstanceMutReadOnlyItem<'_, T> {
     }
 }
 
-impl<T: Kind + Component> fmt::Debug for InstanceMutReadOnlyItem<'_, T> {
+impl<T: Component> fmt::Debug for InstanceMutReadOnlyItem<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:?}", self.instance())
     }
 }
 
-impl<'a, T: Kind + Component> InstanceMutItem<'a, T> {
+impl<'a, T: Component> InstanceMutItem<'a, T> {
     #[must_use]
     pub fn from_entity(world: &'a mut World, entity: Entity) -> Option<Self> {
         // TODO: Why can't I just pass `EntityWorldMut<'a>` here?
@@ -435,26 +435,26 @@ impl<'a, T: Kind + Component> InstanceMutItem<'a, T> {
     }
 }
 
-impl<T: Kind + Component> From<InstanceMutItem<'_, T>> for Instance<T> {
+impl<T: Component> From<InstanceMutItem<'_, T>> for Instance<T> {
     fn from(item: InstanceMutItem<T>) -> Self {
         item.instance
     }
 }
 
-impl<T: Kind + Component> From<&InstanceMutItem<'_, T>> for Instance<T> {
+impl<T: Component> From<&InstanceMutItem<'_, T>> for Instance<T> {
     fn from(item: &InstanceMutItem<T>) -> Self {
         item.instance
     }
 }
 
-impl<T: Kind + Component> PartialEq for InstanceMutItem<'_, T> {
+impl<T: Component> PartialEq for InstanceMutItem<'_, T> {
     fn eq(&self, other: &Self) -> bool {
         self.instance == other.instance
     }
 }
-impl<T: Kind + Component> Eq for InstanceMutItem<'_, T> {}
+impl<T: Component> Eq for InstanceMutItem<'_, T> {}
 
-impl<T: Kind + Component> Deref for InstanceMutItem<'_, T> {
+impl<T: Component> Deref for InstanceMutItem<'_, T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
@@ -462,13 +462,13 @@ impl<T: Kind + Component> Deref for InstanceMutItem<'_, T> {
     }
 }
 
-impl<T: Kind + Component> DerefMut for InstanceMutItem<'_, T> {
+impl<T: Component> DerefMut for InstanceMutItem<'_, T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.data.as_mut()
     }
 }
 
-impl<T: Kind + Component> fmt::Debug for InstanceMutItem<'_, T> {
+impl<T: Component> fmt::Debug for InstanceMutItem<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:?}", self.instance())
     }
@@ -487,11 +487,11 @@ impl<T: Kind> GetInstanceCommands<T> for Commands<'_, '_> {
     }
 }
 
-pub trait GetInstanceRefCommands<T: Kind + Component> {
+pub trait GetInstanceRefCommands<T: Component> {
     fn instance_ref<'a>(&'a mut self, _: &'a InstanceRefItem<T>) -> InstanceRefCommands<'a, T>;
 }
 
-impl<T: Kind + Component> GetInstanceRefCommands<T> for Commands<'_, '_> {
+impl<T: Component> GetInstanceRefCommands<T> for Commands<'_, '_> {
     fn instance_ref<'a>(
         &'a mut self,
         InstanceRefItem { instance, data }: &'a InstanceRefItem<T>,
@@ -587,24 +587,32 @@ impl<'a, T: Kind> DerefMut for InstanceRefCommands<'a, T> {
     }
 }
 
+pub trait KindBundle: Bundle {
+    type Kind: Kind;
+}
+
+impl<T: Component> KindBundle for T {
+    type Kind = T;
+}
+
 pub trait SpawnInstance {
-    fn spawn_instance<T: Kind + Component>(&mut self, instance: T) -> InstanceCommands<'_, T>;
+    fn spawn_instance<T: KindBundle>(&mut self, _: T) -> InstanceCommands<'_, T::Kind>;
 }
 
 impl SpawnInstance for Commands<'_, '_> {
-    fn spawn_instance<T: Kind + Component>(&mut self, instance: T) -> InstanceCommands<'_, T> {
-        let entity = self.spawn(instance).id();
-        // SAFE: `entity` must be a valid instance of kind `T`.
+    fn spawn_instance<T: KindBundle>(&mut self, bundle: T) -> InstanceCommands<'_, T::Kind> {
+        let entity = self.spawn(bundle).id();
+        // SAFE: `entity` must be a valid instance of kind `B::Kind`.
         unsafe { InstanceCommands::from_entity_unchecked(self.entity(entity)) }
     }
 }
 
 pub trait SpawnInstanceWorld {
-    fn spawn_instance<T: Kind + Component>(&mut self, instance: T) -> InstanceMutItem<'_, T>;
+    fn spawn_instance<T: Component>(&mut self, instance: T) -> InstanceMutItem<'_, T>;
 }
 
 impl SpawnInstanceWorld for World {
-    fn spawn_instance<T: Kind + Component>(&mut self, instance: T) -> InstanceMutItem<'_, T> {
+    fn spawn_instance<T: Component>(&mut self, instance: T) -> InstanceMutItem<'_, T> {
         let entity = self.spawn(instance).id();
         // SAFE: `entity` must be a valid instance of kind `T`.
         InstanceMutItem::from_entity(self, entity).unwrap()
