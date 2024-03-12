@@ -528,6 +528,18 @@ impl<'a, T: Kind> InstanceCommands<'a, T> {
     }
 }
 
+impl<'a, T: Kind> From<InstanceCommands<'a, T>> for Instance<T> {
+    fn from(commands: InstanceCommands<'a, T>) -> Self {
+        commands.instance()
+    }
+}
+
+impl<'a, T: Kind> From<&InstanceCommands<'a, T>> for Instance<T> {
+    fn from(commands: &InstanceCommands<'a, T>) -> Self {
+        commands.instance()
+    }
+}
+
 impl<'a, T: Kind> Deref for InstanceCommands<'a, T> {
     type Target = EntityCommands<'a>;
 
@@ -570,6 +582,18 @@ impl<'a, T: Kind> InstanceRefCommands<'a, T> {
     #[must_use]
     pub fn as_entity(&mut self) -> &mut EntityCommands<'a> {
         self.0.as_entity()
+    }
+}
+
+impl<'a, T: Kind> From<InstanceRefCommands<'a, T>> for Instance<T> {
+    fn from(commands: InstanceRefCommands<'a, T>) -> Self {
+        commands.instance()
+    }
+}
+
+impl<'a, T: Kind> From<&InstanceRefCommands<'a, T>> for Instance<T> {
+    fn from(commands: &InstanceRefCommands<'a, T>) -> Self {
+        commands.instance()
     }
 }
 
