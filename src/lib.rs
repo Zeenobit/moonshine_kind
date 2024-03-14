@@ -61,7 +61,6 @@ pub trait Kind: 'static + Send + Sized + Sync {
     /// Returns the debug name of this kind.
     ///
     /// By default, this is the short type name (without path) of this kind.
-    #[must_use]
     fn debug_name() -> String {
         bevy_utils::get_short_name(std::any::type_name::<Self>())
     }
@@ -497,23 +496,19 @@ pub struct InstanceCommands<'a, T: Kind>(EntityCommands<'a>, PhantomData<T>);
 impl<'a, T: Kind> InstanceCommands<'a, T> {
     /// # Safety
     /// Assumes `entity` is a valid instance of kind `T`.
-    #[must_use]
     pub unsafe fn from_entity_unchecked(entity: EntityCommands<'a>) -> Self {
         Self(entity, PhantomData)
     }
 
-    #[must_use]
     pub fn instance(&self) -> Instance<T> {
         // SAFE: `self.entity()` must be a valid instance of kind `T`.
         unsafe { Instance::from_entity_unchecked(self.entity()) }
     }
 
-    #[must_use]
     pub fn entity(&self) -> Entity {
         self.0.id()
     }
 
-    #[must_use]
     pub fn as_entity(&mut self) -> &mut EntityCommands<'a> {
         &mut self.0
     }
