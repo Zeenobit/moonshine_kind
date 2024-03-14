@@ -151,7 +151,6 @@ impl<T: Kind> Instance<T> {
 }
 
 impl<T: Component> Instance<T> {
-    #[must_use]
     pub fn from_entity(entity: EntityRef) -> Option<Self> {
         if entity.contains::<T>() {
             // SAFE: `entity` must be of kind `T`.
@@ -306,7 +305,6 @@ pub struct InstanceRef<T: Component> {
 }
 
 impl<'a, T: Component> InstanceRefItem<'a, T> {
-    #[must_use]
     pub fn from_entity(entity: EntityRef<'a>) -> Option<Self> {
         Some(Self {
             data: entity.get()?,
@@ -315,12 +313,10 @@ impl<'a, T: Component> InstanceRefItem<'a, T> {
         })
     }
 
-    #[must_use]
     pub fn entity(&self) -> Entity {
         self.instance.entity()
     }
 
-    #[must_use]
     pub fn instance(&self) -> Instance<T> {
         self.instance
     }
@@ -368,12 +364,10 @@ pub struct InstanceMut<T: Component> {
 }
 
 impl<'a, T: Component> InstanceMutReadOnlyItem<'a, T> {
-    #[must_use]
     pub fn entity(&self) -> Entity {
         self.instance.entity()
     }
 
-    #[must_use]
     pub fn instance(&self) -> Instance<T> {
         self.instance
     }
@@ -414,7 +408,6 @@ impl<T: Component> fmt::Debug for InstanceMutReadOnlyItem<'_, T> {
 }
 
 impl<'a, T: Component> InstanceMutItem<'a, T> {
-    #[must_use]
     pub fn from_entity(world: &'a mut World, entity: Entity) -> Option<Self> {
         // TODO: Why can't I just pass `EntityWorldMut<'a>` here?
         world.get_mut(entity).map(|data| Self {
@@ -424,12 +417,10 @@ impl<'a, T: Component> InstanceMutItem<'a, T> {
         })
     }
 
-    #[must_use]
     pub fn entity(&self) -> Entity {
         self.instance.entity()
     }
 
-    #[must_use]
     pub fn instance(&self) -> Instance<T> {
         self.instance
     }
@@ -559,27 +550,22 @@ pub struct InstanceRefCommands<'a, T: Kind>(InstanceCommands<'a, T>, &'a T);
 impl<'a, T: Kind> InstanceRefCommands<'a, T> {
     /// # Safety
     /// Assumes `entity` is a valid instance of kind `T`.
-    #[must_use]
     pub unsafe fn from_entity_unchecked(entity: EntityCommands<'a>, data: &'a T) -> Self {
         Self(InstanceCommands::from_entity_unchecked(entity), data)
     }
 
-    #[must_use]
     pub fn instance(&self) -> Instance<T> {
         self.0.instance()
     }
 
-    #[must_use]
     pub fn entity(&self) -> Entity {
         self.0.entity()
     }
 
-    #[must_use]
     pub fn get(&self) -> &T {
         self.1
     }
 
-    #[must_use]
     pub fn as_entity(&mut self) -> &mut EntityCommands<'a> {
         self.0.as_entity()
     }
