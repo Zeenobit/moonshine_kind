@@ -20,9 +20,9 @@ use bevy_reflect::Reflect;
 
 pub mod prelude {
     pub use super::{
-        GetInstanceCommands, GetInstanceRefCommands, Instance, InstanceCommands, InstanceMut,
-        InstanceMutItem, InstanceRef, InstanceRefCommands, InstanceRefItem, Kind, KindBundle,
-        SpawnInstance, SpawnInstanceWorld, WithKind,
+        safe_cast, GetInstanceCommands, GetInstanceRefCommands, Instance, InstanceCommands,
+        InstanceMut, InstanceMutItem, InstanceRef, InstanceRefCommands, InstanceRefItem, Kind,
+        KindBundle, SpawnInstance, SpawnInstanceWorld, WithKind,
     };
 }
 
@@ -137,7 +137,7 @@ impl<T: Kind> Instance<T> {
     where
         T: CastInto<U>,
     {
-        <T as CastInto<U>>::cast_into(self)
+        T::cast_into(self)
     }
 
     /// Converts this instance into an instance of kind `U` without checking if `T` is convertible.
@@ -297,10 +297,22 @@ pub trait CastInto<T: Kind>: Kind {
 }
 
 impl<T: Kind> CastInto<Any> for T {
-    fn cast_into(instance: Instance<T>) -> Instance<Any> {
+    fn cast_into(instance: Instance<Self>) -> Instance<Any> {
         // SAFE: `T` is convertible to `Any`.
         unsafe { Instance::from_entity_unchecked(instance.entity()) }
     }
+}
+
+#[macro_export]
+macro_rules! safe_cast {
+    ($T:ty => $U:ty) => {
+        impl $crate::CastInto<$U> for $T {
+            fn cast_into(instance: Instance<Self>) -> Instance<$U> {
+                // SAFE: Because we said so!
+                unsafe { instance.cast_into_unchecked() }
+            }
+        }
+    };
 }
 
 #[derive(QueryData)]
