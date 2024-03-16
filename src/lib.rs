@@ -186,6 +186,12 @@ impl<T: Kind> PartialEq for Instance<T> {
     }
 }
 
+impl<T: Kind> PartialEq<Entity> for Instance<T> {
+    fn eq(&self, other: &Entity) -> bool {
+        self.0 == *other
+    }
+}
+
 impl<T: Kind> Eq for Instance<T> {}
 
 impl<T: Kind> PartialOrd for Instance<T> {
