@@ -70,7 +70,7 @@ fn count_fruits(fruits: Query<Instance<Fruit>>) {
 
 ### `InstanceRef` and `InstanceMut`
 
-If a kind is also a component (such as `Apple` or `Orange` in examples above), you may use `InstanceRef<T>` and `InstanceMut<T>` to access the instance and component data:
+If a kind is also a component (such as `Apple` or `Orange` in examples above), you may use `InstanceRef<T>` and `InstanceMut<T>` to access the instance and component data together:
 ```rust
 impl Apple {
     fn is_fresh(&self) -> bool {
@@ -88,8 +88,9 @@ fn fresh_apples(apples: Query<InstanceRef<Apple>>) -> Vec<Instance<Apple>> {
     fresh_apples
 }
 ```
-### `InstanceCommands`
-You may also extend the `InstanceCommands<T>` type to define kind-specific commands:
+### `Instance(Ref)Commands`
+You may also extend `InstanceCommands<T>` and `InstanceRefCommands<T>` types to define kind-specific commands.
+These behave similar to `Instance<T>` and `InstanceRef<T>`, and are accessible via `GetInstanceCommands` and `GetInstanceRefCommands` traits:
 ```rust
 #[derive(Component)]
 struct Human;
@@ -108,9 +109,13 @@ fn eat(human: Query<Instance<Human>>, fruits: Query<Instance<Fruit>>, mut comman
     let human = human.single();
     if let Some(fruit) = fruits.iter().next() {
         commands.instance(human).eat(fruit);
+        // Also valid:
+        // commands.instance_ref(human).eat(fruit);
     }
 }
 ```
+
+⚠️ There is currently no support for `InstanceMutCommands<T>`.
 
 ### `Instance<Any>`
 
