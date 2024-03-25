@@ -109,7 +109,7 @@ fn eat(human: Query<Instance<Human>>, fruits: Query<Instance<Fruit>>, mut comman
     let human = human.single();
     if let Some(fruit) = fruits.iter().next() {
         commands.instance(human).eat(fruit);
-        // Also valid:
+        // Alternatively:
         // commands.instance_ref(human).eat(fruit);
     }
 }
