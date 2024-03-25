@@ -19,11 +19,13 @@ use bevy_ecs::{
 use bevy_reflect::Reflect;
 
 pub mod prelude {
-    pub use super::{
-        safe_cast, GetInstanceCommands, GetInstanceRefCommands, Instance, InstanceCommands,
-        InstanceMut, InstanceMutItem, InstanceRef, InstanceRefCommands, InstanceRefItem, Kind,
-        KindBundle, SpawnInstance, SpawnInstanceWorld, WithKind,
+    pub use crate::{
+        safe_cast, GetInstanceCommands, Instance, InstanceCommands, InstanceMut, InstanceMutItem,
+        InstanceRef, Kind, KindBundle, SpawnInstance, SpawnInstanceWorld, WithKind,
     };
+
+    #[allow(deprecated)]
+    pub use crate::{GetInstanceRefCommands, InstanceRefCommands, InstanceRefItem};
 }
 
 /// A type which represents the kind of an [`Entity`].
@@ -315,13 +317,88 @@ macro_rules! safe_cast {
     };
 }
 
-#[derive(QueryData)]
-pub struct InstanceRef<T: Component> {
+pub struct InstanceRef<'a, T: Component> {
     instance: Instance<T>,
-    data: &'static T,
+    data: &'a T,
 }
 
-impl<'a, T: Component> InstanceRefItem<'a, T> {
+#[deprecated(note = "use `InstanceRef` instead")]
+pub type InstanceRefItem<'a, T> = InstanceRef<'a, T>;
+
+unsafe impl<'a, T: Component> WorldQuery for InstanceRef<'a, T> {
+    type Item<'w> = InstanceRef<'w, T>;
+
+    type Fetch<'w> = <(Instance<T>, &'static T) as WorldQuery>::Fetch<'w>;
+
+    type State = <(Instance<T>, &'static T) as WorldQuery>::State;
+
+    fn shrink<'wlong: 'wshort, 'wshort>(item: Self::Item<'wlong>) -> Self::Item<'wshort> {
+        InstanceRef {
+            instance: item.instance,
+            data: item.data,
+        }
+    }
+
+    unsafe fn init_fetch<'w>(
+        world: UnsafeWorldCell<'w>,
+        state: &Self::State,
+        last_run: Tick,
+        this_run: Tick,
+    ) -> Self::Fetch<'w> {
+        <(Instance<T>, &T) as WorldQuery>::init_fetch(world, state, last_run, this_run)
+    }
+
+    const IS_DENSE: bool = <(Instance<T>, &T) as WorldQuery>::IS_DENSE;
+
+    unsafe fn set_archetype<'w>(
+        fetch: &mut Self::Fetch<'w>,
+        state: &Self::State,
+        archetype: &'w Archetype,
+        table: &'w Table,
+    ) {
+        <(Instance<T>, &T) as WorldQuery>::set_archetype(fetch, state, archetype, table)
+    }
+
+    unsafe fn set_table<'w>(fetch: &mut Self::Fetch<'w>, state: &Self::State, table: &'w Table) {
+        <(Instance<T>, &T) as WorldQuery>::set_table(fetch, state, table)
+    }
+
+    unsafe fn fetch<'w>(
+        fetch: &mut Self::Fetch<'w>,
+        entity: Entity,
+        table_row: TableRow,
+    ) -> Self::Item<'w> {
+        let (instance, data) = <(Instance<T>, &T) as WorldQuery>::fetch(fetch, entity, table_row);
+        Self::Item { instance, data }
+    }
+
+    fn update_component_access(state: &Self::State, access: &mut FilteredAccess<ComponentId>) {
+        <(Instance<T>, &T) as WorldQuery>::update_component_access(state, access)
+    }
+
+    fn init_state(world: &mut World) -> Self::State {
+        <(Instance<T>, &T) as WorldQuery>::init_state(world)
+    }
+
+    fn get_state(world: &World) -> Option<Self::State> {
+        <(Instance<T>, &T) as WorldQuery>::get_state(world)
+    }
+
+    fn matches_component_set(
+        state: &Self::State,
+        set_contains_id: &impl Fn(ComponentId) -> bool,
+    ) -> bool {
+        <(Instance<T>, &T) as WorldQuery>::matches_component_set(state, set_contains_id)
+    }
+}
+
+unsafe impl<'a, T: Component> QueryData for InstanceRef<'a, T> {
+    type ReadOnly = Self;
+}
+
+unsafe impl<'a, T: Component> ReadOnlyQueryData for InstanceRef<'a, T> {}
+
+impl<'a, T: Component> InstanceRef<'a, T> {
     pub fn from_entity(entity: EntityRef<'a>) -> Option<Self> {
         Some(Self {
             data: entity.get()?,
@@ -339,27 +416,27 @@ impl<'a, T: Component> InstanceRefItem<'a, T> {
     }
 }
 
-impl<T: Component> From<InstanceRefItem<'_, T>> for Instance<T> {
-    fn from(item: InstanceRefItem<T>) -> Self {
+impl<T: Component> From<InstanceRef<'_, T>> for Instance<T> {
+    fn from(item: InstanceRef<T>) -> Self {
         item.instance()
     }
 }
 
-impl<T: Component> From<&InstanceRefItem<'_, T>> for Instance<T> {
-    fn from(item: &InstanceRefItem<T>) -> Self {
+impl<T: Component> From<&InstanceRef<'_, T>> for Instance<T> {
+    fn from(item: &InstanceRef<T>) -> Self {
         item.instance()
     }
 }
 
-impl<T: Component> PartialEq for InstanceRefItem<'_, T> {
+impl<T: Component> PartialEq for InstanceRef<'_, T> {
     fn eq(&self, other: &Self) -> bool {
         self.instance == other.instance
     }
 }
 
-impl<T: Component> Eq for InstanceRefItem<'_, T> {}
+impl<T: Component> Eq for InstanceRef<'_, T> {}
 
-impl<T: Component> Deref for InstanceRefItem<'_, T> {
+impl<T: Component> Deref for InstanceRef<'_, T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
@@ -367,7 +444,7 @@ impl<T: Component> Deref for InstanceRefItem<'_, T> {
     }
 }
 
-impl<T: Component> fmt::Debug for InstanceRefItem<'_, T> {
+impl<T: Component> fmt::Debug for InstanceRef<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:?}", self.instance())
     }
@@ -495,14 +572,17 @@ impl<T: Kind> GetInstanceCommands<T> for Commands<'_, '_> {
     }
 }
 
+#[deprecated(note = "use `InstanceRef<T>` with `Commands` instead")]
+#[allow(deprecated)]
 pub trait GetInstanceRefCommands<T: Component> {
-    fn instance_ref<'a>(&'a mut self, _: &'a InstanceRefItem<T>) -> InstanceRefCommands<'a, T>;
+    fn instance_ref<'a>(&'a mut self, _: &'a InstanceRef<T>) -> InstanceRefCommands<'a, T>;
 }
 
+#[allow(deprecated)]
 impl<T: Component> GetInstanceRefCommands<T> for Commands<'_, '_> {
     fn instance_ref<'a>(
         &'a mut self,
-        InstanceRefItem { instance, data }: &'a InstanceRefItem<T>,
+        InstanceRef { instance, data }: &'a InstanceRef<T>,
     ) -> InstanceRefCommands<'a, T> {
         let instance = self.instance(*instance);
         InstanceRefCommands(instance, data)
@@ -558,8 +638,10 @@ impl<'a, T: Kind> DerefMut for InstanceCommands<'a, T> {
     }
 }
 
+#[deprecated(note = "use `InstanceRefCommands` instead")]
 pub struct InstanceRefCommands<'a, T: Kind>(InstanceCommands<'a, T>, &'a T);
 
+#[allow(deprecated)]
 impl<'a, T: Kind> InstanceRefCommands<'a, T> {
     /// # Safety
     /// Assumes `entity` is a valid instance of kind `T`.
@@ -584,18 +666,21 @@ impl<'a, T: Kind> InstanceRefCommands<'a, T> {
     }
 }
 
+#[allow(deprecated)]
 impl<'a, T: Kind> From<InstanceRefCommands<'a, T>> for Instance<T> {
     fn from(commands: InstanceRefCommands<'a, T>) -> Self {
         commands.instance()
     }
 }
 
+#[allow(deprecated)]
 impl<'a, T: Kind> From<&InstanceRefCommands<'a, T>> for Instance<T> {
     fn from(commands: &InstanceRefCommands<'a, T>) -> Self {
         commands.instance()
     }
 }
 
+#[allow(deprecated)]
 impl<'a, T: Kind> Deref for InstanceRefCommands<'a, T> {
     type Target = EntityCommands<'a>;
 
@@ -604,6 +689,7 @@ impl<'a, T: Kind> Deref for InstanceRefCommands<'a, T> {
     }
 }
 
+#[allow(deprecated)]
 impl<'a, T: Kind> DerefMut for InstanceRefCommands<'a, T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
