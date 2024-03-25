@@ -319,9 +319,6 @@ pub struct InstanceRef<'a, T: Component> {
     data: &'a T,
 }
 
-#[deprecated(note = "use `InstanceRef` instead")]
-pub type InstanceRefItem<'a, T> = InstanceRef<'a, T>;
-
 unsafe impl<'a, T: Component> WorldQuery for InstanceRef<'a, T> {
     type Item<'w> = InstanceRef<'w, T>;
 
