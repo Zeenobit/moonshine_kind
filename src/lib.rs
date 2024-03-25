@@ -23,9 +23,6 @@ pub mod prelude {
         safe_cast, GetInstanceCommands, Instance, InstanceCommands, InstanceMut, InstanceMutItem,
         InstanceRef, Kind, KindBundle, SpawnInstance, SpawnInstanceWorld, WithKind,
     };
-
-    #[allow(deprecated)]
-    pub use crate::{GetInstanceRefCommands, InstanceRefCommands, InstanceRefItem};
 }
 
 /// A type which represents the kind of an [`Entity`].
@@ -572,23 +569,6 @@ impl<T: Kind> GetInstanceCommands<T> for Commands<'_, '_> {
     }
 }
 
-#[deprecated(note = "use `InstanceRef<T>` with `Commands` instead")]
-#[allow(deprecated)]
-pub trait GetInstanceRefCommands<T: Component> {
-    fn instance_ref<'a>(&'a mut self, _: &'a InstanceRef<T>) -> InstanceRefCommands<'a, T>;
-}
-
-#[allow(deprecated)]
-impl<T: Component> GetInstanceRefCommands<T> for Commands<'_, '_> {
-    fn instance_ref<'a>(
-        &'a mut self,
-        InstanceRef { instance, data }: &'a InstanceRef<T>,
-    ) -> InstanceRefCommands<'a, T> {
-        let instance = self.instance(*instance);
-        InstanceRefCommands(instance, data)
-    }
-}
-
 pub struct InstanceCommands<'a, T: Kind>(EntityCommands<'a>, PhantomData<T>);
 
 impl<'a, T: Kind> InstanceCommands<'a, T> {
@@ -633,64 +613,6 @@ impl<'a, T: Kind> Deref for InstanceCommands<'a, T> {
 }
 
 impl<'a, T: Kind> DerefMut for InstanceCommands<'a, T> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
-
-#[deprecated(note = "use `InstanceRefCommands` instead")]
-pub struct InstanceRefCommands<'a, T: Kind>(InstanceCommands<'a, T>, &'a T);
-
-#[allow(deprecated)]
-impl<'a, T: Kind> InstanceRefCommands<'a, T> {
-    /// # Safety
-    /// Assumes `entity` is a valid instance of kind `T`.
-    pub unsafe fn from_entity_unchecked(entity: EntityCommands<'a>, data: &'a T) -> Self {
-        Self(InstanceCommands::from_entity_unchecked(entity), data)
-    }
-
-    pub fn instance(&self) -> Instance<T> {
-        self.0.instance()
-    }
-
-    pub fn entity(&self) -> Entity {
-        self.0.entity()
-    }
-
-    pub fn get(&self) -> &T {
-        self.1
-    }
-
-    pub fn as_entity(&mut self) -> &mut EntityCommands<'a> {
-        self.0.as_entity()
-    }
-}
-
-#[allow(deprecated)]
-impl<'a, T: Kind> From<InstanceRefCommands<'a, T>> for Instance<T> {
-    fn from(commands: InstanceRefCommands<'a, T>) -> Self {
-        commands.instance()
-    }
-}
-
-#[allow(deprecated)]
-impl<'a, T: Kind> From<&InstanceRefCommands<'a, T>> for Instance<T> {
-    fn from(commands: &InstanceRefCommands<'a, T>) -> Self {
-        commands.instance()
-    }
-}
-
-#[allow(deprecated)]
-impl<'a, T: Kind> Deref for InstanceRefCommands<'a, T> {
-    type Target = EntityCommands<'a>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-#[allow(deprecated)]
-impl<'a, T: Kind> DerefMut for InstanceRefCommands<'a, T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
     }
