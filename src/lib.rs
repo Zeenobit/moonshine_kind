@@ -410,6 +410,14 @@ impl<'a, T: Component> InstanceRef<'a, T> {
     }
 }
 
+impl<T: Component> Clone for InstanceRef<'_, T> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+impl<T: Component> Copy for InstanceRef<'_, T> {}
+
 impl<T: Component> From<InstanceRef<'_, T>> for Instance<T> {
     fn from(item: InstanceRef<T>) -> Self {
         item.instance()
