@@ -638,7 +638,7 @@ pub trait SpawnInstance {
 impl SpawnInstance for Commands<'_, '_> {
     fn spawn_instance<T: KindBundle>(&mut self, bundle: T) -> InstanceCommands<'_, T::Kind> {
         let entity = self.spawn(bundle).id();
-        // SAFE: `entity` must be a valid instance of kind `B::Kind`.
+        // SAFE: `entity` must be a valid instance of `T::Kind`.
         unsafe { InstanceCommands::from_entity_unchecked(self.entity(entity)) }
     }
 }
