@@ -446,6 +446,18 @@ impl<T: Component> Deref for InstanceRef<'_, T> {
     }
 }
 
+impl<T: Component> AsRef<Instance<T>> for InstanceRef<'_, T> {
+    fn as_ref(&self) -> &Instance<T> {
+        &self.instance
+    }
+}
+
+impl<T: Component> AsRef<T> for InstanceRef<'_, T> {
+    fn as_ref(&self) -> &T {
+        self.data
+    }
+}
+
 impl<T: Component> fmt::Debug for InstanceRef<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:?}", self.instance())
@@ -551,6 +563,24 @@ impl<T: Component> Deref for InstanceMutItem<'_, T> {
 
 impl<T: Component> DerefMut for InstanceMutItem<'_, T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
+        self.data.as_mut()
+    }
+}
+
+impl<T: Component> AsRef<Instance<T>> for InstanceMutItem<'_, T> {
+    fn as_ref(&self) -> &Instance<T> {
+        &self.instance
+    }
+}
+
+impl<T: Component> AsRef<T> for InstanceMutItem<'_, T> {
+    fn as_ref(&self) -> &T {
+        self.data.as_ref()
+    }
+}
+
+impl<T: Component> AsMut<T> for InstanceMutItem<'_, T> {
+    fn as_mut(&mut self) -> &mut T {
         self.data.as_mut()
     }
 }
