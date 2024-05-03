@@ -1,5 +1,9 @@
 # 🍎 Moonshine Kind
 
+[![crates.io](https://img.shields.io/crates/v/moonshine-kind)](https://crates.io/crates/moonshine-kind)
+[![docs.rs](https://docs.rs/moonshine-kind/badge.svg)](https://docs.rs/moonshine-kind)
+[![license](https://img.shields.io/crates/l/moonshine-kind)](https://github.com/Zeenobit/moonshine_kind/blob/main/LICENSE)
+
 Simple type safety solution for [Bevy](https://github.com/bevyengine/bevy).
 
 ## Overview
@@ -21,6 +25,9 @@ This crate attempts to solve this problem by introducing a new [`Instance<T>`] t
 ```rust
 use bevy::prelude::*;
 use moonshine_kind::prelude::*;
+
+#[derive(Component)]
+struct Fruit;
 
 #[derive(Component)]
 struct FruitBasket {
@@ -75,7 +82,7 @@ struct Orange;
 struct Fruit;
 
 impl Kind for Fruit {
-    type Filter = Or<With<Apple>, With<Orange>>;
+    type Filter = Or<(With<Apple>, With<Orange>)>;
 }
 
 fn count_fruits(fruits: Query<Instance<Fruit>>) {
@@ -91,11 +98,13 @@ use bevy::prelude::*;
 use moonshine_kind::prelude::*;
 
 #[derive(Component)]
-struct Apple;
+struct Apple {
+    freshness: f32
+}
 
 impl Apple {
     fn is_fresh(&self) -> bool {
-        // ...
+        self.freshness >= 1.0
     }
 }
 
@@ -119,6 +128,12 @@ You may also extend [`InstanceCommands<T>`] to define [`Commands`] specific to a
 use bevy::prelude::*;
 use moonshine_kind::prelude::*;
 
+struct Fruit;
+
+impl Kind for Fruit {
+    type Filter = (/* ... */);
+}
+
 #[derive(Component)]
 struct Human;
 
@@ -127,7 +142,7 @@ trait Eat {
 }
 
 // Humans can eat:
-impl Eat for InstanceCommands<'_, '_, '_, Human> {
+impl Eat for InstanceCommands<'_, Human> {
     fn eat(&mut self, fruit: Instance<Fruit>) {
         // ...
     }
@@ -172,6 +187,15 @@ It is recommended to avoid using kind semantics for components that may be remov
 
 However, if necessary, you may check instances for validity prior to usage:
 ```rust
+use bevy::prelude::*;
+use moonshine_kind::prelude::*;
+
+struct Fruit;
+
+impl Kind for Fruit {
+    type Filter = (/* ... */);
+}
+
 fn prune_fruits(
     mut fruits: Vec<Instance<Fruit>>,
     query: &Query<(), <Fruit as Kind>::Filter>
@@ -179,7 +203,8 @@ fn prune_fruits(
     fruits.retain(|fruit| {
         // Is the Fruit still a Fruit?
         query.get(fruit.entity()).is_ok()
-    })
+    });
+    fruits
 }
 ```
 
