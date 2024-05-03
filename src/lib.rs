@@ -308,7 +308,7 @@ impl<T: Kind> CastInto<Any> for T {
 macro_rules! safe_cast {
     ($T:ty => $U:ty) => {
         impl $crate::CastInto<$U> for $T {
-            fn cast_into(instance: Instance<Self>) -> Instance<$U> {
+            fn cast_into(instance: $crate::Instance<Self>) -> $crate::Instance<$U> {
                 // SAFE: Because we said so!
                 unsafe { instance.cast_into_unchecked() }
             }
