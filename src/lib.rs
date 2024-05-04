@@ -861,7 +861,16 @@ impl<'a, T: Kind> DerefMut for InstanceCommands<'a, T> {
     }
 }
 
+/// A [`Bundle`] which represents a [`Kind`].
+///
+/// # Usage
+/// This trait is used to allow spawning an [`Instance<T>`] where `T` is [`<Self as KindBundle>::Kind`][`KindBundle::Kind`].
+///
+/// Any [`Component`] is automatically a kind bundle of its own kind.
+///
+/// See [`SpawnInstance`] for more information.
 pub trait KindBundle: Bundle {
+    /// The [`Kind`] represented by this [`Bundle`].
     type Kind: Kind;
 }
 
@@ -869,7 +878,24 @@ impl<T: Component> KindBundle for T {
     type Kind = T;
 }
 
+/// Extension trait to safely spawn an [`Instance<T>`] using [`Commands`] where `T` is also a [`KindBundle`].
 pub trait SpawnInstance {
+    /// Spawns a new [`Instance<T>`] using its associated [`KindBundle`].
+    ///
+    /// # Example
+    /// ```
+    /// # use bevy::prelude::*;
+    /// # use moonshine_kind::prelude::*;
+    ///
+    /// #[derive(Component)]
+    /// struct Apple;
+    ///
+    /// fn spawn_apple(mut commands: Commands) {
+    ///     let apple: Instance<Apple> = commands.spawn_instance(Apple).instance();
+    ///     println!("Spawned {apple:?}!");
+    /// }
+    ///
+    /// # bevy_ecs::system::assert_is_system(spawn_apple);
     fn spawn_instance<T: KindBundle>(&mut self, _: T) -> InstanceCommands<'_, T::Kind>;
 }
 
@@ -881,7 +907,22 @@ impl SpawnInstance for Commands<'_, '_> {
     }
 }
 
+/// Extension trait to safely spawn an [`Instance<T>`] using [`World`] where `T` is also a [`KindBundle`].
 pub trait SpawnInstanceWorld {
+    /// Spawns a new [`Instance<T>`] using its associated [`KindBundle`].
+    ///
+    /// # Example
+    /// ```
+    /// # use bevy::prelude::*;
+    /// # use moonshine_kind::prelude::*;
+    ///
+    /// #[derive(Component)]
+    /// struct Apple;
+    ///
+    /// fn spawn_apple(world: &mut World) {
+    ///     let apple: Instance<Apple> = world.spawn_instance(Apple).instance();
+    ///     println!("Spawned {apple:?}!");
+    /// }
     fn spawn_instance<T: Component>(&mut self, instance: T) -> InstanceMutItem<'_, T>;
 }
 
