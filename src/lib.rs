@@ -124,6 +124,8 @@ impl Kind for Any {
 ///         basket.push(fruit);
 ///     }
 /// }
+///
+/// # bevy_ecs::system::assert_is_system(collect_fruits);
 /// ```
 #[derive(Reflect)]
 pub struct Instance<T: Kind>(Entity, #[reflect(ignore)] PhantomData<T>);
@@ -364,7 +366,7 @@ impl From<Entity> for Instance<Any> {
 /// The expression `safe_cast!(Apple => Fruit)` is equivalent to:
 /// ```
 /// # use bevy::prelude::*;
-/// # use moonshine_kind::prelude::*;
+/// # use moonshine_kind::{CastInto, prelude::*};
 /// # struct Fruit;
 /// # impl Kind for Fruit {
 /// #    type Filter = With<Apple>;
@@ -373,8 +375,9 @@ impl From<Entity> for Instance<Any> {
 /// # struct Apple;
 ///
 /// impl CastInto<Fruit> for Apple {
-///    fn cast_into(instance: Instance<Apple>) -> Instance<Fruit> {
-///      unsafe { instance.cast_into_unchecked() }
+///     fn cast_into(instance: Instance<Apple>) -> Instance<Fruit> {
+///         unsafe { instance.cast_into_unchecked() }
+///     }
 /// }
 /// ```
 pub trait CastInto<T: Kind>: Kind {
@@ -388,6 +391,9 @@ impl<T: Kind> CastInto<Any> for T {
     }
 }
 
+/// A macro to safely implement [`CastInto`] for a pair of related [`Kind`]s.
+///
+/// See [`CastInto`] for more information.
 #[macro_export]
 macro_rules! safe_cast {
     ($T:ty => $U:ty) => {
@@ -400,6 +406,46 @@ macro_rules! safe_cast {
     };
 }
 
+/// A [`QueryData`] item which represents a reference to an [`Instance<T>`] and its associated [`Component`].
+///
+/// # Usage
+/// If a [`Kind`] is also a component, it is often convenient to access the instance and component data together.
+/// This type is designed to make these queries more ergonomic.
+///
+/// You may use this type as either a [`Query`] parameter, or access it from an [`EntityRef`].
+///
+/// # Example
+/// ```
+/// # use bevy::prelude::*;
+/// # use moonshine_kind::prelude::*;
+///
+/// #[derive(Component)]
+/// struct Apple {
+///     freshness: f32,
+/// }
+///
+/// impl Apple {
+///     fn is_fresh(&self) -> bool {
+///         self.freshness >= 0.5
+///     }
+/// }
+///
+/// // Query Access:
+/// fn fresh_apples(query: Query<InstanceRef<Apple>>) -> Vec<Instance<Apple>> {
+///     query.iter()
+///         .filter_map(|apple| apple.is_fresh().then_some(apple.instance()))
+///         .collect()
+/// }
+///
+/// // Entity Access:
+/// fn fresh_apples_world<'a>(world: &'a World) -> Vec<InstanceRef<'a, Apple>> {
+///    world.iter_entities()
+///         .filter_map(|entity| InstanceRef::from_entity(entity))
+///         .collect()
+/// }
+///
+/// # bevy_ecs::system::assert_is_system(fresh_apples);
+/// ```
 pub struct InstanceRef<'a, T: Component> {
     instance: Instance<T>,
     data: &'a T,
@@ -479,6 +525,7 @@ unsafe impl<'a, T: Component> QueryData for InstanceRef<'a, T> {
 unsafe impl<'a, T: Component> ReadOnlyQueryData for InstanceRef<'a, T> {}
 
 impl<'a, T: Component> InstanceRef<'a, T> {
+    /// Creates a new [`InstanceRef<T>`] from an [`EntityRef`] if it contains a given [`Component`] of type `T`.
     pub fn from_entity(entity: EntityRef<'a>) -> Option<Self> {
         Some(Self {
             data: entity.get()?,
@@ -487,10 +534,12 @@ impl<'a, T: Component> InstanceRef<'a, T> {
         })
     }
 
+    /// Returns the associated [`Entity`].
     pub fn entity(&self) -> Entity {
         self.instance.entity()
     }
 
+    /// Returns the associated [`Instance<T>`].
     pub fn instance(&self) -> Instance<T> {
         self.instance
     }
@@ -550,6 +599,15 @@ impl<T: Component> fmt::Debug for InstanceRef<'_, T> {
     }
 }
 
+/// A [`QueryData`] item which represents a mutable reference to an [`Instance<T>`] and its associated [`Component`].
+///
+/// # Usage
+/// This type behaves similar like [`InstanceRef<T>`] but allows mutable access to its associated [`Component`].
+///
+/// The main difference is that you cannot create an [`InstanceMut<T>`] from an [`EntityMut`].
+/// See [`InstanceMutItem::from_entity`] for more details.
+///
+/// See [`InstanceRef<T>`] for more information and examples.
 #[derive(QueryData)]
 #[query_data(mutable)]
 pub struct InstanceMut<T: Component> {
@@ -558,10 +616,12 @@ pub struct InstanceMut<T: Component> {
 }
 
 impl<'a, T: Component> InstanceMutReadOnlyItem<'a, T> {
+    /// Returns the associated [`Entity`].
     pub fn entity(&self) -> Entity {
         self.instance.entity()
     }
 
+    /// Returns the associated [`Instance<T>`].
     pub fn instance(&self) -> Instance<T> {
         self.instance
     }
@@ -602,6 +662,7 @@ impl<T: Component> fmt::Debug for InstanceMutReadOnlyItem<'_, T> {
 }
 
 impl<'a, T: Component> InstanceMutItem<'a, T> {
+    /// Creates a new [`InstanceMutItem<T>`] from an [`EntityMut`] if it contains a given [`Component`] of type `T`.
     pub fn from_entity(world: &'a mut World, entity: Entity) -> Option<Self> {
         // TODO: Why can't I just pass `EntityWorldMut<'a>` here?
         world.get_mut(entity).map(|data| Self {
@@ -611,10 +672,12 @@ impl<'a, T: Component> InstanceMutItem<'a, T> {
         })
     }
 
+    /// Returns the associated [`Entity`].
     pub fn entity(&self) -> Entity {
         self.instance.entity()
     }
 
+    /// Returns the associated [`Instance<T>`].
     pub fn instance(&self) -> Instance<T> {
         self.instance
     }
@@ -677,37 +740,96 @@ impl<T: Component> fmt::Debug for InstanceMutItem<'_, T> {
     }
 }
 
+/// A short alias for using a [`Kind`] as a [`QueryFilter`].
+///
+/// # Example
+/// ```
+/// # use bevy::prelude::*;
+/// # use moonshine_kind::prelude::*;
+///
+/// #[derive(Component)]
+/// struct Apple;
+///
+/// fn count_apples(query: Query<(), WithKind<Apple>>) -> usize {
+///     query.iter().count()
+/// }
+///
+/// # bevy_ecs::system::assert_is_system(count_apples);
+/// ```
 pub type WithKind<T> = <T as Kind>::Filter;
 
+/// Extension trait to access [`InstanceCommands<T>`] from [`Commands`].
+///
+/// See [`InstanceCommands`] for more information.
 pub trait GetInstanceCommands<T: Kind> {
-    fn instance(&mut self, _: impl Into<Instance<T>>) -> InstanceCommands<'_, T>;
+    /// Returns the [`InstanceCommands<T>`] for an [`Instance<T>`].
+    fn instance(&mut self, instance: Instance<T>) -> InstanceCommands<'_, T>;
 }
 
 impl<T: Kind> GetInstanceCommands<T> for Commands<'_, '_> {
-    fn instance(&mut self, instance: impl Into<Instance<T>>) -> InstanceCommands<'_, T> {
-        let instance: Instance<T> = instance.into();
+    fn instance(&mut self, instance: Instance<T>) -> InstanceCommands<'_, T> {
         InstanceCommands(self.entity(instance.entity()), PhantomData)
     }
 }
 
+/// [`EntityCommands`] with kind semantics.
+///
+/// # Usage
+/// On its own, this type is not very useful. Instead, it is designed to be extended using traits.
+/// This allows you to design commands for a specific kind of an entity in a type-safe manner.
+///
+/// # Example
+/// ```
+/// # use bevy::prelude::*;
+/// # use moonshine_kind::prelude::*;
+///
+/// #[derive(Component)]
+/// struct Apple;
+///
+/// #[derive(Component)]
+/// struct Eat;
+///
+/// trait EatApple {
+///     fn eat(&mut self);
+/// }
+///
+/// impl EatApple for InstanceCommands<'_, Apple> {
+///     fn eat(&mut self) {
+///         info!("Crunch!");
+///         self.despawn();
+///     }
+/// }
+///
+/// fn eat_apples(apples: Query<Instance<Apple>, With<Eat>>, mut commands: Commands) {
+///     for apple in apples.iter() {
+///         commands.instance(apple).eat();
+///     }
+/// }
+///
+/// # bevy_ecs::system::assert_is_system(eat_apples);
 pub struct InstanceCommands<'a, T: Kind>(EntityCommands<'a>, PhantomData<T>);
 
 impl<'a, T: Kind> InstanceCommands<'a, T> {
+    /// Creates a new [`InstanceCommands<T>`] from [`EntityCommands`] without any validation.
+    ///
     /// # Safety
     /// Assumes `entity` is a valid instance of kind `T`.
     pub unsafe fn from_entity_unchecked(entity: EntityCommands<'a>) -> Self {
         Self(entity, PhantomData)
     }
 
+    /// Returns the associated [`Instance<T>`].
     pub fn instance(&self) -> Instance<T> {
         // SAFE: `self.entity()` must be a valid instance of kind `T`.
         unsafe { Instance::from_entity_unchecked(self.entity()) }
     }
 
+    /// Returns the associated [`Entity`].
     pub fn entity(&self) -> Entity {
         self.0.id()
     }
 
+    /// Returns the associated [`EntityCommands`].
     pub fn as_entity(&mut self) -> &mut EntityCommands<'a> {
         &mut self.0
     }
