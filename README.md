@@ -41,7 +41,6 @@ struct FruitBasket {
 - Ability to define custom entity kinds
 - Ability to define commands for specific entity kinds
 - Zero or minimal boilerplate
-- No macros!
 
 ## Usage
 
@@ -172,6 +171,40 @@ struct Container<T: Kind = Any> {
 ```
 [`Instance<Any>`][`Instance<T>`] is functionally equivalent to [`Entity`].
 
+### Casting
+
+An [`Instance<T>`] is safely convertible to an [`Instance<U>`][`Instance<T>`] if [`CastInto<U>`][`CastInto`] is implemented for `T`.
+
+This is done by using the `.cast_into()` method:
+
+You may use the [`safe_cast`] macro to implement this trait for given kind pair:
+
+```rust
+use bevy::prelude::*;
+use moonshine_kind::prelude::*;
+
+#[derive(Component)]
+struct Apple;
+
+struct Fruit;
+
+impl Kind for Fruit {
+    type Filter = With<Apple>;
+}
+
+// An Apple is a Fruit because we said so:
+safe_cast!(Apple => Fruit);
+
+fn init_apple(apple: Instance<Apple>, commands: &mut Commands) {
+    init_fruit(apple.cast_into(), commands);
+    // ...
+}
+
+fn init_fruit(fruit: Instance<Fruit>, commands: &mut Commands) {
+    // ...
+}
+```
+
 ## Examples
 
 See [examples/fruits.rs](examples/fruits.rs) for a complete example.
@@ -227,3 +260,5 @@ You may also contact me on the official [Bevy Discord](https://discord.gg/bevy) 
 [`InstanceCommands<T>`]:https://docs.rs/moonshine-kind/latest/moonshine_kind/struct.InstanceCommands.html
 [`GetInstanceCommands<T>`]:https://docs.rs/moonshine-kind/latest/moonshine_kind/trait.GetInstanceCommands.html
 [`Any`]:https://docs.rs/moonshine-kind/latest/moonshine_kind/struct.Any.html
+[`CastInto`]:https://docs.rs/moonshine-kind/latest/moonshine_kind/trait.CastInto.html
+[`safe_cast`]:https://docs.rs/moonshine-kind/latest/moonshine_kind/macro.safe_cast.html
