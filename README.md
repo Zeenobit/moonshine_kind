@@ -1,8 +1,10 @@
 # 🍎 Moonshine Kind
 
 [![crates.io](https://img.shields.io/crates/v/moonshine-kind)](https://crates.io/crates/moonshine-kind)
+[![downloads](https://img.shields.io/crates/dr/moonshine-kind)](https://crates.io/crates/moonshine-kind)
 [![docs.rs](https://docs.rs/moonshine-kind/badge.svg)](https://docs.rs/moonshine-kind)
 [![license](https://img.shields.io/crates/l/moonshine-kind)](https://github.com/Zeenobit/moonshine_kind/blob/main/LICENSE)
+[![stars](https://img.shields.io/github/stars/Zeenobit/moonshine_kind)](https://github.com/Zeenobit/moonshine_kind)
 
 Simple type safety solution for [Bevy](https://github.com/bevyengine/bevy).
 
