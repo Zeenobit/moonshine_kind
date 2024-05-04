@@ -29,7 +29,7 @@ pub mod prelude {
 
 /// A type which represents the kind of an [`Entity`].
 ///
-/// An entity is of kind `T` if it matches `Query<Entity, <T as Kind>::Filter>`.
+/// An entity is of kind `T` if it matches [`Query<Entity, <T as Kind>::Filter>`][`Query`].
 ///
 /// By default, an entity with a [`Component`] of type `T` is also of kind `T`.
 ///
@@ -52,9 +52,11 @@ pub mod prelude {
 ///
 /// fn fruits(query: Query<Instance<Fruit>>) {
 ///     for fruit in query.iter() {
-///         println!("{fruit:?}");
+///         println!("{fruit:?} is a fruit!");
 ///     }
 /// }
+///
+/// # bevy_ecs::system::assert_is_system(fruits);
 /// ```
 pub trait Kind: 'static + Send + Sized + Sync {
     type Filter: QueryFilter;
@@ -72,6 +74,8 @@ impl<T: Component> Kind for T {
 }
 
 /// Represents the kind of any [`Entity`].
+///
+/// See [`Instance<Any>`] for more information on usage.
 #[derive(Default, Clone, Copy)]
 pub struct Any;
 
@@ -79,13 +83,20 @@ impl Kind for Any {
     type Filter = ();
 }
 
-/// Represents an [`Entity`] of kind `T`.
+/// Represents an [`Entity`] of [`Kind`] `T`.
 ///
-/// `Instance<Any>` is functionally equivalent to [`Entity`].
+/// `Instance<Any>` is functionally equivalent to an entity.
 ///
 /// # Usage
-/// An `Instance<T>` can be used to access entities in a "kind-safe" manner. This allows game logic to
-/// reference entities in a safer and more readable way.
+/// An `Instance<T>` can be used to access entities in a "kind-safe" manner to improve safety and readability.
+///
+/// This type is designed to behave exactly like an [`Entity`].
+///
+/// This means you may use it as a [`Query`] parameter, pass it to [`Commands`] to access [`InstanceCommands<T>`],
+/// or store it as a type-safe reference to an [`Entity`].
+///
+/// Note that an `Instance<T>` has `'static` lifetime and does not contain any [`Component`] data.
+/// It *only* contains type information.
 ///
 /// # Example
 /// ```
@@ -122,8 +133,27 @@ impl<T: Kind> Instance<T> {
 
     /// Creates a new instance of kind `T` from some [`Entity`].
     ///
+    /// # Usage
+    /// This function is useful when you **know** an `Entity` is of a specific kind and you
+    /// need an `Instance<T>` with no way to validate it.
+    ///
     /// # Safety
     /// Assumes `entity` is a valid instance of kind `T`.
+    ///
+    /// # Example
+    /// ```
+    /// # use bevy::prelude::*;
+    /// # use moonshine_kind::prelude::*;
+    ///
+    /// #[derive(Component)]
+    /// struct Apple;
+    ///
+    /// fn init_apple(entity: Entity, commands: &mut Commands) -> Instance<Apple> {
+    ///     commands.entity(entity).insert(Apple);
+    ///     // SAFE: `entity` will be a valid instance of `Apple`.
+    ///     unsafe { Instance::from_entity_unchecked(entity) }
+    /// }
+    /// ```
     pub unsafe fn from_entity_unchecked(entity: Entity) -> Self {
         Self(entity, PhantomData)
     }
@@ -133,7 +163,32 @@ impl<T: Kind> Instance<T> {
         self.0
     }
 
-    /// Converts this instance into an instance of kind `U`.
+    /// Converts this instance into an instance of another kind [`Kind`] `U`.
+    ///
+    /// # Usage
+    /// A kind `T` is safety convertible to another kind `U` if `T` implements [`CastInto<U>`].
+    ///
+    /// # Example
+    /// ```
+    /// # use bevy::prelude::*;
+    /// # use moonshine_kind::prelude::*;
+    ///
+    /// struct Fruit;
+    ///
+    /// impl Kind for Fruit {
+    ///    type Filter = With<Apple>;
+    /// }
+    ///
+    /// #[derive(Component)]
+    /// struct Apple;
+    ///
+    /// // `Apple` is a kind of `Fruit`.
+    /// safe_cast!(Apple => Fruit);
+    ///
+    /// fn apple_as_fruit(apple: Instance<Apple>) -> Instance<Fruit> {
+    ///     apple.cast_into() // This is safe because we said so!
+    /// }
+    /// ```
     pub fn cast_into<U: Kind>(self) -> Instance<U>
     where
         T: CastInto<U>,
@@ -141,7 +196,13 @@ impl<T: Kind> Instance<T> {
         T::cast_into(self)
     }
 
-    /// Converts this instance into an instance of kind `U` without checking if `T` is convertible.
+    /// Converts this instance into an instance of another kind [`Kind`] `U` without any validation.
+    ///
+    /// # Usage
+    /// This function is useful when you **know** an `Instance<T>` is convertible to a specific type and you
+    /// need an `Instance<U>` with no way to validate it.
+    ///
+    /// Always prefer to explicitly declare safe casts using [`safe_cast`] and use [`Instance::cast_into`] instead of this.
     ///
     /// # Safety
     /// Assumes this instance is also a valid `Instance<U>`.
@@ -293,6 +354,29 @@ impl From<Entity> for Instance<Any> {
     }
 }
 
+/// A trait which allows safe casting from one [`Kind`] to another.
+///
+/// # Usage
+/// It is recommended to use the [`safe_cast`] macro to implement this trait.
+///
+/// # Example
+///
+/// The expression `safe_cast!(Apple => Fruit)` is equivalent to:
+/// ```
+/// # use bevy::prelude::*;
+/// # use moonshine_kind::prelude::*;
+/// # struct Fruit;
+/// # impl Kind for Fruit {
+/// #    type Filter = With<Apple>;
+/// # }
+/// # #[derive(Component)]
+/// # struct Apple;
+///
+/// impl CastInto<Fruit> for Apple {
+///    fn cast_into(instance: Instance<Apple>) -> Instance<Fruit> {
+///      unsafe { instance.cast_into_unchecked() }
+/// }
+/// ```
 pub trait CastInto<T: Kind>: Kind {
     fn cast_into(instance: Instance<Self>) -> Instance<T>;
 }

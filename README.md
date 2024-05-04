@@ -40,7 +40,8 @@ struct FruitBasket {
 - Improved type safety and readability for Bevy code
 - Ability to define custom entity kinds
 - Ability to define commands for specific entity kinds
-- Zero or minimal boilerplate. No macros!
+- Zero or minimal boilerplate
+- No macros!
 
 ## Usage
 
@@ -207,6 +208,12 @@ fn prune_fruits(
     fruits
 }
 ```
+
+## Support
+
+Please [post an issue](https://github.com/Zeenobit/moonshine_kind/issues/new) for any bugs, questions, or suggestions.
+
+You may also contact me on the official [Bevy Discord](https://discord.gg/bevy) server as **@Zeenobit**.
 
 [`Entity`]:https://docs.rs/bevy/latest/bevy/ecs/entity/struct.Entity.html
 [`Component`]:https://docs.rs/bevy/latest/bevy/ecs/component/trait.Component.html
