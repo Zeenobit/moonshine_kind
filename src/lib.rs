@@ -131,6 +131,7 @@ impl Kind for Any {
 pub struct Instance<T: Kind>(Entity, #[reflect(ignore)] PhantomData<T>);
 
 impl<T: Kind> Instance<T> {
+    /// Same as [`Entity::PLACEHOLDER`], but for an [`Instance<T>`].
     pub const PLACEHOLDER: Self = Self(Entity::PLACEHOLDER, PhantomData);
 
     /// Creates a new instance of kind `T` from some [`Entity`].
@@ -138,6 +139,8 @@ impl<T: Kind> Instance<T> {
     /// # Usage
     /// This function is useful when you **know** an `Entity` is of a specific kind and you
     /// need an `Instance<T>` with no way to validate it.
+    ///
+    /// See [`Instance::from_entity`] for a safer alternative.
     ///
     /// # Safety
     /// Assumes `entity` is a valid instance of kind `T`.
@@ -214,6 +217,7 @@ impl<T: Kind> Instance<T> {
 }
 
 impl<T: Component> Instance<T> {
+    /// Creates a new instance of kind `T` from some [`EntityRef`] if the entity has a [`Component`] of type `T`.
     pub fn from_entity(entity: EntityRef) -> Option<Self> {
         if entity.contains::<T>() {
             // SAFE: `entity` must be of kind `T`.
@@ -267,6 +271,14 @@ impl<T: Kind> PartialOrd for Instance<T> {
 impl<T: Kind> Ord for Instance<T> {
     fn cmp(&self, other: &Self) -> Ordering {
         self.0.cmp(&other.0)
+    }
+}
+
+impl<T: Kind> Deref for Instance<T> {
+    type Target = Entity;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
 }
 
@@ -878,7 +890,7 @@ impl<T: Component> KindBundle for T {
     type Kind = T;
 }
 
-/// Extension trait to safely spawn an [`Instance<T>`] using [`Commands`] where `T` is also a [`KindBundle`].
+/// Extension trait to safely spawn an [`Instance<T>`] using [`Commands`] where `T` associated with a [`KindBundle`].
 pub trait SpawnInstance {
     /// Spawns a new [`Instance<T>`] using its associated [`KindBundle`].
     ///
@@ -907,7 +919,7 @@ impl SpawnInstance for Commands<'_, '_> {
     }
 }
 
-/// Extension trait to safely spawn an [`Instance<T>`] using [`World`] where `T` is also a [`KindBundle`].
+/// Extension trait to safely spawn an [`Instance<T>`] using [`World`] where `T` associated with a [`KindBundle`].
 pub trait SpawnInstanceWorld {
     /// Spawns a new [`Instance<T>`] using its associated [`KindBundle`].
     ///
@@ -923,12 +935,17 @@ pub trait SpawnInstanceWorld {
     ///     let apple: Instance<Apple> = world.spawn_instance(Apple).instance();
     ///     println!("Spawned {apple:?}!");
     /// }
-    fn spawn_instance<T: Component>(&mut self, instance: T) -> InstanceMutItem<'_, T>;
+    fn spawn_instance<T: KindBundle>(&mut self, _: T) -> InstanceMutItem<'_, T::Kind>
+    where
+        T::Kind: Component;
 }
 
 impl SpawnInstanceWorld for World {
-    fn spawn_instance<T: Component>(&mut self, instance: T) -> InstanceMutItem<'_, T> {
-        let entity = self.spawn(instance).id();
+    fn spawn_instance<T: KindBundle>(&mut self, bundle: T) -> InstanceMutItem<'_, T::Kind>
+    where
+        T::Kind: Component,
+    {
+        let entity = self.spawn(bundle).id();
         // SAFE: `entity` must be a valid instance of kind `T`.
         InstanceMutItem::from_entity(self, entity).unwrap()
     }
