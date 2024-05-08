@@ -76,7 +76,6 @@ impl<T: Component> Kind for T {
 /// Represents the kind of any [`Entity`].
 ///
 /// See [`Instance<Any>`] for more information on usage.
-#[derive(Default, Clone, Copy)]
 pub struct Any;
 
 impl Kind for Any {
