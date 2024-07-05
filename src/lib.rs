@@ -10,7 +10,7 @@ use std::{
 
 use bevy_ecs::{
     archetype::Archetype,
-    component::{ComponentId, Tick},
+    component::{ComponentId, Components, Tick},
     entity::{EntityMapper, MapEntities},
     prelude::*,
     query::{FilteredAccess, QueryData, QueryFilter, ReadOnlyQueryData, WorldQuery},
@@ -327,8 +327,8 @@ unsafe impl<T: Kind> WorldQuery for Instance<T> {
         <T::Filter as WorldQuery>::update_component_access(state, access)
     }
 
-    fn get_state(world: &World) -> Option<Self::State> {
-        <T::Filter as WorldQuery>::get_state(world)
+    fn get_state(components: &Components) -> Option<Self::State> {
+        <T::Filter as WorldQuery>::get_state(components)
     }
 
     fn init_state(world: &mut World) -> Self::State {
@@ -517,8 +517,8 @@ unsafe impl<'a, T: Component> WorldQuery for InstanceRef<'a, T> {
         <(Instance<T>, &T) as WorldQuery>::init_state(world)
     }
 
-    fn get_state(world: &World) -> Option<Self::State> {
-        <(Instance<T>, &T) as WorldQuery>::get_state(world)
+    fn get_state(components: &Components) -> Option<Self::State> {
+        <(Instance<T>, &T) as WorldQuery>::get_state(components)
     }
 
     fn matches_component_set(

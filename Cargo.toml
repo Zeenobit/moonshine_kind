@@ -1,6 +1,6 @@
 [package]
 name = "moonshine-kind"
-version = "0.1.6"
+version = "0.1.7"
 edition = "2021"
 license = "MIT"
 description = "Simple type safety solution for Bevy"
@@ -11,9 +11,9 @@ homepage = "https://github.com/Zeenobit/moonshine_kind"
 repository = "https://github.com/Zeenobit/moonshine_kind"
 
 [dependencies]
-bevy_ecs = "0.13.*"
-bevy_reflect = "0.13.*"
-bevy_utils = "0.13.*"
+bevy_ecs = "0.14.*"
+bevy_reflect = "0.14.*"
+bevy_utils = "0.14.*"
 
 [dev-dependencies]
-bevy = "0.13.*"
+bevy = "0.14.*"
