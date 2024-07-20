@@ -848,6 +848,16 @@ impl<'a, T: Kind> InstanceCommands<'a, T> {
     pub fn as_entity(&mut self) -> &mut EntityCommands<'a> {
         &mut self.0
     }
+
+    pub fn insert(&mut self, bundle: impl Bundle) -> &mut Self {
+        self.0.insert(bundle);
+        self
+    }
+
+    pub fn remove<U: Component>(&mut self) -> &mut Self {
+        self.0.remove::<U>();
+        self
+    }
 }
 
 impl<'a, T: Kind> From<InstanceCommands<'a, T>> for Instance<T> {
