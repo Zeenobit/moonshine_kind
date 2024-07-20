@@ -22,7 +22,7 @@ use bevy_reflect::Reflect;
 
 pub mod prelude {
     pub use crate::{
-        safe_cast, GetInstanceCommands, Instance, InstanceCommands, InstanceMut, InstanceMutItem,
+        kind, GetInstanceCommands, Instance, InstanceCommands, InstanceMut, InstanceMutItem,
         InstanceRef, Kind, KindBundle, SpawnInstance, SpawnInstanceWorld, WithKind,
     };
 }
@@ -172,27 +172,7 @@ impl<T: Kind> Instance<T> {
     /// # Usage
     /// A kind `T` is safety convertible to another kind `U` if `T` implements [`CastInto<U>`].
     ///
-    /// # Example
-    /// ```
-    /// # use bevy::prelude::*;
-    /// # use moonshine_kind::prelude::*;
-    ///
-    /// struct Fruit;
-    ///
-    /// impl Kind for Fruit {
-    ///    type Filter = With<Apple>;
-    /// }
-    ///
-    /// #[derive(Component)]
-    /// struct Apple;
-    ///
-    /// // `Apple` is a kind of `Fruit`.
-    /// safe_cast!(Apple => Fruit);
-    ///
-    /// fn apple_as_fruit(apple: Instance<Apple>) -> Instance<Fruit> {
-    ///     apple.cast_into() // This is safe because we said so!
-    /// }
-    /// ```
+    /// See [`kind`] macro for usage examples.
     pub fn cast_into<U: Kind>(self) -> Instance<U>
     where
         T: CastInto<U>,
@@ -206,7 +186,7 @@ impl<T: Kind> Instance<T> {
     /// This function is useful when you **know** an `Instance<T>` is convertible to a specific type and you
     /// need an `Instance<U>` with no way to validate it.
     ///
-    /// Always prefer to explicitly declare safe casts using [`safe_cast`] and use [`Instance::cast_into`] instead of this.
+    /// Always prefer to explicitly declare safe casts using [`kind`] macro and use [`Instance::cast_into`] instead of this.
     ///
     /// # Safety
     /// Assumes this instance is also a valid `Instance<U>`.
@@ -370,27 +350,7 @@ impl From<Entity> for Instance<Any> {
 /// A trait which allows safe casting from one [`Kind`] to another.
 ///
 /// # Usage
-/// It is recommended to use the [`safe_cast`] macro to implement this trait.
-///
-/// # Example
-///
-/// The expression `safe_cast!(Apple => Fruit)` is equivalent to:
-/// ```
-/// # use bevy::prelude::*;
-/// # use moonshine_kind::{CastInto, prelude::*};
-/// # struct Fruit;
-/// # impl Kind for Fruit {
-/// #    type Filter = With<Apple>;
-/// # }
-/// # #[derive(Component)]
-/// # struct Apple;
-///
-/// impl CastInto<Fruit> for Apple {
-///     fn cast_into(instance: Instance<Apple>) -> Instance<Fruit> {
-///         unsafe { instance.cast_into_unchecked() }
-///     }
-/// }
-/// ```
+/// Prefer to use the [`kind`] macro to implement this trait.
 pub trait CastInto<T: Kind>: Kind {
     fn cast_into(instance: Instance<Self>) -> Instance<T>;
 }
@@ -406,8 +366,52 @@ impl<T: Kind> CastInto<Any> for T {
 ///
 /// See [`CastInto`] for more information.
 #[macro_export]
+#[deprecated]
 macro_rules! safe_cast {
     ($T:ty => $U:ty) => {
+        impl $crate::CastInto<$U> for $T {
+            fn cast_into(instance: $crate::Instance<Self>) -> $crate::Instance<$U> {
+                // SAFE: Because we said so!
+                unsafe { instance.cast_into_unchecked() }
+            }
+        }
+    };
+}
+
+/// A macro to safely implement [`CastInto`] for a pair of related [`Kind`]s.
+///
+/// See [`CastInto`] for more information.
+///
+/// # Usage
+/// ```
+/// # use bevy::prelude::*;
+/// # use moonshine_kind::prelude::*;
+///
+/// struct Fruit;
+///
+/// impl Kind for Fruit {
+///    type Filter = With<Apple>;
+/// }
+///
+/// #[derive(Component)]
+/// struct Apple;
+///
+/// // We can guarantee all entities with an `Apple` component are of kind `Fruit`:
+/// kind!(Apple is Fruit);
+///
+/// fn eat_apple(apple: Instance<Apple>) {
+///    println!("Crunch!");
+///    // SAFE: Because we said so.
+///    eat_fruit(apple.cast_into());
+/// }
+///
+/// fn eat_fruit(fruit: Instance<Fruit>) {
+///    println!("Yum!");
+/// }
+/// ```
+#[macro_export]
+macro_rules! kind {
+    ($T:ident is $U:ty) => {
         impl $crate::CastInto<$U> for $T {
             fn cast_into(instance: $crate::Instance<Self>) -> $crate::Instance<$U> {
                 // SAFE: Because we said so!
@@ -995,12 +999,7 @@ mod tests {
 
     #[test]
     fn kind_cast() {
-        impl CastInto<Bar> for Foo {
-            fn cast_into(instance: Instance<Self>) -> Instance<Bar> {
-                // SAFE: `Foo` is convertible to `FooBase`.
-                unsafe { Instance::from_entity_unchecked(instance.entity()) }
-            }
-        }
+        kind!(Foo is Bar);
 
         let any = Instance::<Any>::PLACEHOLDER;
         let foo = Instance::<Foo>::PLACEHOLDER;

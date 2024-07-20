@@ -5,9 +5,13 @@ use moonshine_kind::prelude::*;
 #[derive(Component)]
 struct Apple;
 
+kind!(Apple is Fruit);
+
 // Represents an Orange. Oranges are juicy!
 #[derive(Component)]
 struct Orange;
+
+kind!(Orange is Fruit);
 
 // All Apples and Oranges are Fruits.
 struct Fruit;
@@ -72,13 +76,18 @@ fn human_eat(
 ) {
     for (human, Eat(fruit)) in human.iter() {
         if let Ok(apple) = apple.get(fruit.entity()) {
-            println!("{human:?} ate a crunchy {apple:?}");
+            println!("{human:?} ate a crunchy {apple:?}.");
+            human_likes_fruit(human, apple.cast_into());
         } else if let Ok(orange) = orange.get(fruit.entity()) {
-            println!("{human:?} ate a juicy {orange:?}");
+            println!("{human:?} ate a juicy {orange:?}.");
         } else {
-            println!("{human:?} ate a mysterious {fruit:?}");
+            println!("{human:?} ate a mysterious {fruit:?}.");
         }
         commands.instance(*fruit).despawn();
         commands.instance(human).remove::<Eat>();
     }
+}
+
+fn human_likes_fruit(human: Instance<Human>, fruit: Instance<Fruit>) {
+    println!("{human:?} likes {fruit:?}!");
 }
