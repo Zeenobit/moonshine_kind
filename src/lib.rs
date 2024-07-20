@@ -180,6 +180,16 @@ impl<T: Kind> Instance<T> {
         T::cast_into(self)
     }
 
+    /// Converts this instance into an instance of [`Kind`] [`Any`].
+    ///
+    /// # Usage
+    ///
+    /// Any [`Instance<T>`] can be safely cast into an [`Instance<Any>`] using this function.
+    pub fn cast_into_any(self) -> Instance<Any> {
+        // SAFE: All instances are of kind `Any`.
+        unsafe { self.cast_into_unchecked() }
+    }
+
     /// Converts this instance into an instance of another kind [`Kind`] `U` without any validation.
     ///
     /// # Usage
@@ -355,10 +365,9 @@ pub trait CastInto<T: Kind>: Kind {
     fn cast_into(instance: Instance<Self>) -> Instance<T>;
 }
 
-impl<T: Kind> CastInto<Any> for T {
-    fn cast_into(instance: Instance<Self>) -> Instance<Any> {
-        // SAFE: `T` is convertible to `Any`.
-        unsafe { Instance::from_entity_unchecked(instance.entity()) }
+impl<T: Kind> CastInto<T> for T {
+    fn cast_into(instance: Instance<Self>) -> Instance<Self> {
+        instance
     }
 }
 
@@ -1014,8 +1023,8 @@ mod tests {
         let any = Instance::<Any>::PLACEHOLDER;
         let foo = Instance::<Foo>::PLACEHOLDER;
         let bar = foo.cast_into::<Bar>();
-        assert!(foo.cast_into::<Any>() == any);
-        assert!(bar.cast_into::<Any>() == any);
+        assert!(foo.cast_into_any() == any);
+        assert!(bar.cast_into_any() == any);
         // assert!(any.cast_into::<Foo>() == foo); // <-- Must not compile!
         // assert!(bar.cast_into::<Foo>() == foo); // <-- Must not compile!
         assert!(bar.entity() == foo.entity());
