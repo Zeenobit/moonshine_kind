@@ -179,7 +179,7 @@ An [`Instance<T>`] is safely convertible to an [`Instance<U>`][`Instance<T>`] if
 
 This is done by using the `.cast_into()` method:
 
-You may use the [`safe_cast`] macro to implement this trait for given kind pair:
+You may use the [`kind`] macro to implement this trait for given kind pair:
 
 ```rust
 use bevy::prelude::*;
@@ -195,7 +195,7 @@ impl Kind for Fruit {
 }
 
 // An Apple is a Fruit because we said so:
-safe_cast!(Apple => Fruit);
+kind!(Apple is Fruit);
 
 fn init_apple(apple: Instance<Apple>, commands: &mut Commands) {
     init_fruit(apple.cast_into(), commands);
