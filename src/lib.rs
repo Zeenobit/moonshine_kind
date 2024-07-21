@@ -3,10 +3,10 @@
 use bevy_ecs::{prelude::*, query::QueryFilter};
 
 pub mod prelude {
-    pub use crate::{
-        kind, GetInstanceCommands, Instance, InstanceCommands, InstanceMut, InstanceMutItem,
-        InstanceRef, Kind, KindBundle, SpawnInstance, SpawnInstanceWorld, WithKind,
-    };
+    pub use crate::{kind, Kind, WithKind};
+    pub use crate::{GetInstanceCommands, InstanceCommands};
+    pub use crate::{Instance, InstanceMut, InstanceRef};
+    pub use crate::{KindBundle, SpawnInstance, SpawnInstanceWorld};
 }
 
 /// A type which represents the kind of an [`Entity`].
