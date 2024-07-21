@@ -867,6 +867,18 @@ impl<'a, T: Kind> InstanceCommands<'a, T> {
         self.0.remove::<U>();
         self
     }
+
+    pub fn reborrow(&mut self) -> InstanceCommands<'_, T> {
+        InstanceCommands(self.0.reborrow(), PhantomData)
+    }
+
+    pub fn cast_into<U: Kind>(self) -> InstanceCommands<'a, U>
+    where
+        T: CastInto<U>,
+    {
+        // SAFE: `CastInto<U>` is implemented for `T`.
+        unsafe { InstanceCommands::from_entity_unchecked(self.0) }
+    }
 }
 
 impl<'a, T: Kind> From<InstanceCommands<'a, T>> for Instance<T> {
