@@ -165,7 +165,13 @@ impl<T: Kind> Copy for Instance<T> {}
 
 impl<T: Kind> fmt::Debug for Instance<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple(&T::debug_name()).field(&self.0).finish()
+        write!(
+            f,
+            "{}({}v{})",
+            T::debug_name(),
+            self.0.index(),
+            self.0.generation()
+        )
     }
 }
 
