@@ -3,10 +3,13 @@
 use bevy_ecs::{prelude::*, query::QueryFilter};
 
 pub mod prelude {
-    pub use crate::{kind, Kind, WithKind};
+    pub use crate::{kind, Kind, OfKind};
     pub use crate::{GetInstanceCommands, InstanceCommands};
     pub use crate::{Instance, InstanceMut, InstanceRef};
     pub use crate::{KindBundle, SpawnInstance, SpawnInstanceWorld};
+
+    #[deprecated(note = "use 'OfKind' instead.")]
+    pub type WithKind<T> = OfKind<T>;
 }
 
 /// A type which represents the kind of an [`Entity`].
@@ -151,13 +154,13 @@ macro_rules! kind {
 /// #[derive(Component)]
 /// struct Apple;
 ///
-/// fn count_apples(query: Query<(), WithKind<Apple>>) -> usize {
+/// fn count_apples(query: Query<(), OfKind<Apple>>) -> usize {
 ///     query.iter().count()
 /// }
 ///
 /// # bevy_ecs::system::assert_is_system(count_apples);
 /// ```
-pub type WithKind<T> = <T as Kind>::Filter;
+pub type OfKind<T> = <T as Kind>::Filter;
 
 /// A [`Bundle`] which represents a [`Kind`].
 ///
@@ -172,7 +175,7 @@ pub trait KindBundle: Bundle {
     type Kind: Kind;
 }
 
-impl<T: Component> KindBundle for T {
+impl<T: Kind + Bundle> KindBundle for T {
     type Kind = T;
 }
 
