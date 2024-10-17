@@ -7,9 +7,6 @@ pub mod prelude {
     pub use crate::{GetInstanceCommands, InstanceCommands};
     pub use crate::{Instance, InstanceMut, InstanceRef};
     pub use crate::{KindBundle, SpawnInstance, SpawnInstanceWorld};
-
-    #[deprecated(note = "use 'OfKind' instead.")]
-    pub type WithKind<T> = OfKind<T>;
 }
 
 /// A type which represents the kind of an [`Entity`].
