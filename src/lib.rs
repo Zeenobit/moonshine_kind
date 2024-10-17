@@ -85,22 +85,6 @@ impl<T: Kind> CastInto<T> for T {
 /// A macro to safely implement [`CastInto`] for a pair of related [`Kind`]s.
 ///
 /// See [`CastInto`] for more information.
-#[macro_export]
-#[deprecated]
-macro_rules! safe_cast {
-    ($T:ty => $U:ty) => {
-        impl $crate::CastInto<$U> for $T {
-            fn cast_into(instance: $crate::Instance<Self>) -> $crate::Instance<$U> {
-                // SAFE: Because we said so!
-                unsafe { instance.cast_into_unchecked() }
-            }
-        }
-    };
-}
-
-/// A macro to safely implement [`CastInto`] for a pair of related [`Kind`]s.
-///
-/// See [`CastInto`] for more information.
 ///
 /// # Usage
 /// ```
