@@ -47,7 +47,7 @@ pub trait Kind: 'static + Send + Sized + Sync {
     ///
     /// By default, this is the short type name (without path) of this kind.
     fn debug_name() -> String {
-        bevy_utils::get_short_name(std::any::type_name::<Self>())
+        moonshine_util::get_short_name(std::any::type_name::<Self>())
     }
 }
 
@@ -226,25 +226,25 @@ mod tests {
     use super::*;
     use bevy_ecs::system::RunSystemOnce;
 
-    #[derive(Component)]
-    struct Foo;
-
-    #[derive(Component)]
-    struct Bar;
-
     fn count<T: Kind>(query: Query<Instance<T>>) -> usize {
         query.iter().count()
     }
 
     #[test]
     fn kind_with() {
+        #[derive(Component)]
+        struct Foo;
+
         let mut world = World::new();
         world.spawn(Foo);
-        assert_eq!(world.run_system_once(count::<Foo>), 1);
+        assert_eq!(world.run_system_once(count::<Foo>).unwrap(), 1);
     }
 
     #[test]
     fn kind_without() {
+        #[derive(Component)]
+        struct Foo;
+
         struct NotFoo;
 
         impl Kind for NotFoo {
@@ -253,19 +253,31 @@ mod tests {
 
         let mut world = World::new();
         world.spawn(Foo);
-        assert_eq!(world.run_system_once(count::<NotFoo>), 0);
+        assert_eq!(world.run_system_once(count::<NotFoo>).unwrap(), 0);
     }
 
     #[test]
     fn kind_multi() {
+        #[derive(Component)]
+        struct Foo;
+
+        #[derive(Component)]
+        struct Bar;
+
         let mut world = World::new();
         world.spawn((Foo, Bar));
-        assert_eq!(world.run_system_once(count::<Foo>), 1);
-        assert_eq!(world.run_system_once(count::<Bar>), 1);
+        assert_eq!(world.run_system_once(count::<Foo>).unwrap(), 1);
+        assert_eq!(world.run_system_once(count::<Bar>).unwrap(), 1);
     }
 
     #[test]
     fn kind_cast() {
+        #[derive(Component)]
+        struct Foo;
+
+        #[derive(Component)]
+        struct Bar;
+
         kind!(Foo is Bar);
 
         let any = Instance::<Any>::PLACEHOLDER;

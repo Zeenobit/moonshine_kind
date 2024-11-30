@@ -226,6 +226,10 @@ unsafe impl<T: Kind> WorldQuery for Instance<T> {
         item
     }
 
+    fn shrink_fetch<'wlong: 'wshort, 'wshort>(fetch: Self::Fetch<'wlong>) -> Self::Fetch<'wshort> {
+        <T::Filter as WorldQuery>::shrink_fetch(fetch)
+    }
+
     unsafe fn init_fetch<'w>(
         world: UnsafeWorldCell<'w>,
         state: &Self::State,
@@ -346,7 +350,7 @@ pub struct InstanceRef<'a, T: Component> {
     data: &'a T,
 }
 
-unsafe impl<'a, T: Component> WorldQuery for InstanceRef<'a, T> {
+unsafe impl<T: Component> WorldQuery for InstanceRef<'_, T> {
     type Item<'w> = InstanceRef<'w, T>;
 
     type Fetch<'w> = <(Instance<T>, &'static T) as WorldQuery>::Fetch<'w>;
@@ -358,6 +362,10 @@ unsafe impl<'a, T: Component> WorldQuery for InstanceRef<'a, T> {
             instance: item.instance,
             data: item.data,
         }
+    }
+
+    fn shrink_fetch<'wlong: 'wshort, 'wshort>(fetch: Self::Fetch<'wlong>) -> Self::Fetch<'wshort> {
+        <(Instance<T>, &T) as WorldQuery>::shrink_fetch(fetch)
     }
 
     unsafe fn init_fetch<'w>(
@@ -413,11 +421,11 @@ unsafe impl<'a, T: Component> WorldQuery for InstanceRef<'a, T> {
     }
 }
 
-unsafe impl<'a, T: Component> QueryData for InstanceRef<'a, T> {
+unsafe impl<T: Component> QueryData for InstanceRef<'_, T> {
     type ReadOnly = Self;
 }
 
-unsafe impl<'a, T: Component> ReadOnlyQueryData for InstanceRef<'a, T> {}
+unsafe impl<T: Component> ReadOnlyQueryData for InstanceRef<'_, T> {}
 
 impl<'a, T: Component> InstanceRef<'a, T> {
     /// Creates a new [`InstanceRef<T>`] from an [`EntityRef`] if it contains a given [`Component`] of type `T`.
@@ -510,7 +518,7 @@ pub struct InstanceMut<T: Component> {
     data: &'static mut T,
 }
 
-impl<'a, T: Component> InstanceMutReadOnlyItem<'a, T> {
+impl<T: Component> InstanceMutReadOnlyItem<'_, T> {
     /// Returns the associated [`Entity`].
     pub fn entity(&self) -> Entity {
         self.instance.entity()
@@ -754,7 +762,7 @@ impl<'a, T: Kind> Deref for InstanceCommands<'a, T> {
     }
 }
 
-impl<'a, T: Kind> DerefMut for InstanceCommands<'a, T> {
+impl<T: Kind> DerefMut for InstanceCommands<'_, T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
     }
