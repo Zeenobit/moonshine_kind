@@ -165,6 +165,12 @@ impl<T: Kind> Copy for Instance<T> {}
 
 impl<T: Kind> fmt::Debug for Instance<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}({:?})", T::debug_name(), self.0)
+    }
+}
+
+impl<T: Kind> fmt::Display for Instance<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
             "{}({}v{})",
@@ -498,7 +504,13 @@ impl<T: Component> AsRef<T> for InstanceRef<'_, T> {
 
 impl<T: Component> fmt::Debug for InstanceRef<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", self.instance())
+        self.instance().fmt(f)
+    }
+}
+
+impl<T: Component> fmt::Display for InstanceRef<'_, T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.instance().fmt(f)
     }
 }
 
@@ -555,12 +567,6 @@ impl<T: Component> Deref for InstanceMutReadOnlyItem<'_, T> {
 
     fn deref(&self) -> &Self::Target {
         self.data
-    }
-}
-
-impl<T: Component> fmt::Debug for InstanceMutReadOnlyItem<'_, T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", self.instance())
     }
 }
 
@@ -634,12 +640,6 @@ impl<T: Component> AsRef<T> for InstanceMutItem<'_, T> {
 impl<T: Component> AsMut<T> for InstanceMutItem<'_, T> {
     fn as_mut(&mut self) -> &mut T {
         self.data.as_mut()
-    }
-}
-
-impl<T: Component> fmt::Debug for InstanceMutItem<'_, T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", self.instance())
     }
 }
 
