@@ -210,6 +210,7 @@ pub trait SpawnInstanceWorld {
     ///     let apple: Instance<Apple> = world.spawn_instance(Apple).instance();
     ///     println!("Spawned {apple:?}!");
     /// }
+    #[deprecated(since = "0.2.1")]
     fn spawn_instance<T: KindBundle>(&mut self, _: T) -> InstanceMutItem<'_, T::Kind>
     where
         T::Kind: Component;
