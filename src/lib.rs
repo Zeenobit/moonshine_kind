@@ -3,10 +3,13 @@
 use bevy_ecs::{prelude::*, query::QueryFilter};
 
 pub mod prelude {
-    pub use crate::{kind, Kind, OfKind};
+    pub use crate::{kind, Kind};
     pub use crate::{GetInstanceCommands, InstanceCommands};
     pub use crate::{Instance, InstanceMut, InstanceRef};
     pub use crate::{KindBundle, SpawnInstance, SpawnInstanceWorld};
+
+    #[allow(deprecated)]
+    pub use crate::OfKind;
 }
 
 /// A type which represents the kind of an [`Entity`].
@@ -141,6 +144,7 @@ macro_rules! kind {
 ///
 /// # bevy_ecs::system::assert_is_system(count_apples);
 /// ```
+#[deprecated(since = "0.2.1", note = "use `T::Filter` instead")]
 pub type OfKind<T> = <T as Kind>::Filter;
 
 /// A [`Bundle`] which represents a [`Kind`].
@@ -178,6 +182,7 @@ pub trait SpawnInstance {
     /// }
     ///
     /// # bevy_ecs::system::assert_is_system(spawn_apple);
+    #[deprecated(since = "0.2.1")]
     fn spawn_instance<T: KindBundle>(&mut self, _: T) -> InstanceCommands<'_, T::Kind>;
 }
 
