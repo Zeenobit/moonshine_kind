@@ -508,18 +508,6 @@ impl<T: Component> AsRef<T> for InstanceRef<'_, T> {
     }
 }
 
-impl<T: Component> fmt::Debug for InstanceRef<'_, T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.instance().fmt(f)
-    }
-}
-
-impl<T: Component> fmt::Display for InstanceRef<'_, T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.instance().fmt(f)
-    }
-}
-
 /// A [`QueryData`] item which represents a mutable reference to an [`Instance<T>`] and its associated [`Component`].
 ///
 /// # Usage
