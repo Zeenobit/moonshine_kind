@@ -317,6 +317,14 @@ impl From<Entity> for Instance<Any> {
     }
 }
 
+pub trait AsInstance<T: Kind> {
+    fn instance(&self) -> Instance<T>;
+
+    fn entity(&self) -> Entity {
+        self.instance().entity()
+    }
+}
+
 /// A [`QueryData`] item which represents a reference to an [`Instance<T>`] and its associated [`Component`].
 ///
 /// # Usage
@@ -448,16 +456,6 @@ impl<'a, T: Component> InstanceRef<'a, T> {
             instance: unsafe { Instance::from_entity_unchecked(entity.id()) },
         })
     }
-
-    /// Returns the associated [`Entity`].
-    pub fn entity(&self) -> Entity {
-        self.instance.entity()
-    }
-
-    /// Returns the associated [`Instance<T>`].
-    pub fn instance(&self) -> Instance<T> {
-        self.instance
-    }
 }
 
 impl<T: Component> Clone for InstanceRef<'_, T> {
@@ -508,6 +506,12 @@ impl<T: Component> AsRef<T> for InstanceRef<'_, T> {
     }
 }
 
+impl<T: Component> AsInstance<T> for InstanceRef<'_, T> {
+    fn instance(&self) -> Instance<T> {
+        self.instance
+    }
+}
+
 /// A [`QueryData`] item which represents a mutable reference to an [`Instance<T>`] and its associated [`Component`].
 ///
 /// # Usage
@@ -522,18 +526,6 @@ impl<T: Component> AsRef<T> for InstanceRef<'_, T> {
 pub struct InstanceMut<T: Component> {
     instance: Instance<T>,
     data: &'static mut T,
-}
-
-impl<T: Component> InstanceMutReadOnlyItem<'_, T> {
-    /// Returns the associated [`Entity`].
-    pub fn entity(&self) -> Entity {
-        self.instance.entity()
-    }
-
-    /// Returns the associated [`Instance<T>`].
-    pub fn instance(&self) -> Instance<T> {
-        self.instance
-    }
 }
 
 impl<T: Component> From<InstanceMutReadOnlyItem<'_, T>> for Instance<T> {
@@ -564,6 +556,12 @@ impl<T: Component> Deref for InstanceMutReadOnlyItem<'_, T> {
     }
 }
 
+impl<T: Component> AsInstance<T> for InstanceMutReadOnlyItem<'_, T> {
+    fn instance(&self) -> Instance<T> {
+        self.instance
+    }
+}
+
 impl<'a, T: Component> InstanceMutItem<'a, T> {
     /// Creates a new [`InstanceMutItem<T>`] from an [`EntityMut`] if it contains a given [`Component`] of type `T`.
     pub fn from_entity(world: &'a mut World, entity: Entity) -> Option<Self> {
@@ -573,16 +571,6 @@ impl<'a, T: Component> InstanceMutItem<'a, T> {
             // SAFE: Kind is validated by `entity.get()` above.
             instance: unsafe { Instance::from_entity_unchecked(entity) },
         })
-    }
-
-    /// Returns the associated [`Entity`].
-    pub fn entity(&self) -> Entity {
-        self.instance.entity()
-    }
-
-    /// Returns the associated [`Instance<T>`].
-    pub fn instance(&self) -> Instance<T> {
-        self.instance
     }
 }
 
@@ -634,6 +622,12 @@ impl<T: Component> AsRef<T> for InstanceMutItem<'_, T> {
 impl<T: Component> AsMut<T> for InstanceMutItem<'_, T> {
     fn as_mut(&mut self) -> &mut T {
         self.data.as_mut()
+    }
+}
+
+impl<T: Component> AsInstance<T> for InstanceMutItem<'_, T> {
+    fn instance(&self) -> Instance<T> {
+        self.instance
     }
 }
 
@@ -703,11 +697,6 @@ impl<'a, T: Kind> InstanceCommands<'a, T> {
         unsafe { Instance::from_entity_unchecked(self.entity()) }
     }
 
-    /// Returns the associated [`Entity`].
-    pub fn entity(&self) -> Entity {
-        self.0.id()
-    }
-
     /// Returns the associated [`EntityCommands`].
     pub fn as_entity(&mut self) -> &mut EntityCommands<'a> {
         &mut self.0
@@ -759,5 +748,11 @@ impl<'a, T: Kind> Deref for InstanceCommands<'a, T> {
 impl<T: Kind> DerefMut for InstanceCommands<'_, T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
+    }
+}
+
+impl<T: Kind> AsInstance<T> for InstanceCommands<'_, T> {
+    fn instance(&self) -> Instance<T> {
+        self.instance()
     }
 }

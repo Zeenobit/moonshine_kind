@@ -4,8 +4,8 @@ use bevy_ecs::{prelude::*, query::QueryFilter};
 
 pub mod prelude {
     pub use crate::{kind, Kind};
+    pub use crate::{AsInstance, Instance, InstanceMut, InstanceRef};
     pub use crate::{GetInstanceCommands, InstanceCommands};
-    pub use crate::{Instance, InstanceMut, InstanceRef};
     pub use crate::{KindBundle, SpawnInstance, SpawnInstanceWorld};
 
     #[allow(deprecated)]
