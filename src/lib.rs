@@ -5,8 +5,8 @@ use bevy_ecs::{prelude::*, query::QueryFilter};
 pub mod prelude {
     pub use crate::{kind, Kind};
     pub use crate::{AsInstance, Instance, InstanceMut, InstanceRef};
+    pub use crate::{ComponentInstance, SpawnInstance, SpawnInstanceWorld};
     pub use crate::{GetInstanceCommands, InstanceCommands};
-    pub use crate::{SpawnInstance, SpawnInstanceWorld};
 }
 
 /// A type which represents the kind of an [`Entity`].
