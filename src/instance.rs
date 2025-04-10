@@ -524,82 +524,123 @@ impl<T: Component> AsInstance<T> for InstanceRef<'_, T> {
 /// This type behaves similar like [`InstanceRef<T>`] but allows mutable access to its associated [`Component`].
 ///
 /// The main difference is that you cannot create an [`InstanceMut<T>`] from an [`EntityMut`].
-/// See [`InstanceMutItem::from_entity`] for more details.
+/// See [`InstanceMut::from_entity`] for more details.
 ///
 /// See [`InstanceRef<T>`] for more information and examples.
-#[derive(QueryData)]
-#[query_data(mutable)]
-pub struct InstanceMut<T: Component> {
+pub struct InstanceMut<'a, T: Component> {
     instance: Instance<T>,
-    data: &'static mut T,
+    data: Mut<'a, T>,
 }
 
-impl<T: Component> From<InstanceMutReadOnlyItem<'_, T>> for Instance<T> {
-    fn from(item: InstanceMutReadOnlyItem<T>) -> Self {
-        item.instance()
+unsafe impl<T: Component> WorldQuery for InstanceMut<'_, T> {
+    type Item<'w> = InstanceMut<'w, T>;
+
+    type Fetch<'w> = <(Instance<T>, &'static mut T) as WorldQuery>::Fetch<'w>;
+
+    type State = <(Instance<T>, &'static mut T) as WorldQuery>::State;
+
+    fn shrink<'wlong: 'wshort, 'wshort>(item: Self::Item<'wlong>) -> Self::Item<'wshort> {
+        InstanceMut {
+            instance: item.instance,
+            data: item.data,
+        }
+    }
+
+    fn shrink_fetch<'wlong: 'wshort, 'wshort>(fetch: Self::Fetch<'wlong>) -> Self::Fetch<'wshort> {
+        <(Instance<T>, &mut T) as WorldQuery>::shrink_fetch(fetch)
+    }
+
+    unsafe fn init_fetch<'w>(
+        world: UnsafeWorldCell<'w>,
+        state: &Self::State,
+        last_run: Tick,
+        this_run: Tick,
+    ) -> Self::Fetch<'w> {
+        <(Instance<T>, &mut T) as WorldQuery>::init_fetch(world, state, last_run, this_run)
+    }
+
+    const IS_DENSE: bool = <(Instance<T>, &T) as WorldQuery>::IS_DENSE;
+
+    unsafe fn set_archetype<'w>(
+        fetch: &mut Self::Fetch<'w>,
+        state: &Self::State,
+        archetype: &'w Archetype,
+        table: &'w Table,
+    ) {
+        <(Instance<T>, &mut T) as WorldQuery>::set_archetype(fetch, state, archetype, table)
+    }
+
+    unsafe fn set_table<'w>(fetch: &mut Self::Fetch<'w>, state: &Self::State, table: &'w Table) {
+        <(Instance<T>, &mut T) as WorldQuery>::set_table(fetch, state, table)
+    }
+
+    unsafe fn fetch<'w>(
+        fetch: &mut Self::Fetch<'w>,
+        entity: Entity,
+        table_row: TableRow,
+    ) -> Self::Item<'w> {
+        let (instance, data) =
+            <(Instance<T>, &mut T) as WorldQuery>::fetch(fetch, entity, table_row);
+        Self::Item { instance, data }
+    }
+
+    fn update_component_access(state: &Self::State, access: &mut FilteredAccess<ComponentId>) {
+        <(Instance<T>, &T) as WorldQuery>::update_component_access(state, access)
+    }
+
+    fn init_state(world: &mut World) -> Self::State {
+        <(Instance<T>, &T) as WorldQuery>::init_state(world)
+    }
+
+    fn get_state(components: &Components) -> Option<Self::State> {
+        <(Instance<T>, &T) as WorldQuery>::get_state(components)
+    }
+
+    fn matches_component_set(
+        state: &Self::State,
+        set_contains_id: &impl Fn(ComponentId) -> bool,
+    ) -> bool {
+        <(Instance<T>, &T) as WorldQuery>::matches_component_set(state, set_contains_id)
     }
 }
 
-impl<T: Component> From<&InstanceMutReadOnlyItem<'_, T>> for Instance<T> {
-    fn from(item: &InstanceMutReadOnlyItem<T>) -> Self {
-        item.instance()
-    }
+unsafe impl<'a, T: Component> QueryData for InstanceMut<'a, T> {
+    type ReadOnly = InstanceRef<'a, T>;
 }
 
-impl<T: Component> PartialEq for InstanceMutReadOnlyItem<'_, T> {
-    fn eq(&self, other: &Self) -> bool {
-        self.instance == other.instance
-    }
-}
-
-impl<T: Component> Eq for InstanceMutReadOnlyItem<'_, T> {}
-
-impl<T: Component> Deref for InstanceMutReadOnlyItem<'_, T> {
-    type Target = T;
-
-    fn deref(&self) -> &Self::Target {
-        self.data
-    }
-}
-
-impl<T: Component> AsInstance<T> for InstanceMutReadOnlyItem<'_, T> {
-    fn instance(&self) -> Instance<T> {
-        self.instance
-    }
-}
-
-impl<'a, T: Component> InstanceMutItem<'a, T> {
-    /// Creates a new [`InstanceMutItem<T>`] from an [`EntityMut`] if it contains a given [`Component`] of type `T`.
-    pub fn from_entity(world: &'a mut World, entity: Entity) -> Option<Self> {
-        // TODO: Why can't I just pass `EntityWorldMut<'a>` here?
-        world.get_mut(entity).map(|data| Self {
+impl<'a, T: Component> InstanceMut<'a, T> {
+    /// Creates a new [`InstanceMut<T>`] from an [`EntityMut`] if it contains a given [`Component`] of type `T`.
+    pub fn from_entity(entity: &'a mut EntityWorldMut) -> Option<Self> {
+        let id = entity.id();
+        entity.get_mut::<T>().map(|data| Self {
             data,
             // SAFE: Kind is validated by `entity.get()` above.
-            instance: unsafe { Instance::from_entity_unchecked(entity) },
+            instance: unsafe { Instance::from_entity_unchecked(id) },
         })
     }
 }
 
-impl<T: Component> From<InstanceMutItem<'_, T>> for Instance<T> {
-    fn from(item: InstanceMutItem<T>) -> Self {
-        item.instance
+impl<T: Component> From<InstanceMut<'_, T>> for Instance<T> {
+    fn from(item: InstanceMut<T>) -> Self {
+        item.instance()
     }
 }
 
-impl<T: Component> From<&InstanceMutItem<'_, T>> for Instance<T> {
-    fn from(item: &InstanceMutItem<T>) -> Self {
-        item.instance
+impl<T: Component> From<&InstanceMut<'_, T>> for Instance<T> {
+    fn from(item: &InstanceMut<T>) -> Self {
+        item.instance()
     }
 }
 
-impl<T: Component> PartialEq for InstanceMutItem<'_, T> {
+impl<T: Component> PartialEq for InstanceMut<'_, T> {
     fn eq(&self, other: &Self) -> bool {
         self.instance == other.instance
     }
 }
-impl<T: Component> Eq for InstanceMutItem<'_, T> {}
 
-impl<T: Component> Deref for InstanceMutItem<'_, T> {
+impl<T: Component> Eq for InstanceMut<'_, T> {}
+
+impl<T: Component> Deref for InstanceMut<'_, T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
@@ -607,31 +648,61 @@ impl<T: Component> Deref for InstanceMutItem<'_, T> {
     }
 }
 
-impl<T: Component> DerefMut for InstanceMutItem<'_, T> {
+impl<T: Component> DerefMut for InstanceMut<'_, T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.data.as_mut()
     }
 }
 
-impl<T: Component> AsRef<Instance<T>> for InstanceMutItem<'_, T> {
+impl<T: Component> AsRef<Instance<T>> for InstanceMut<'_, T> {
     fn as_ref(&self) -> &Instance<T> {
         &self.instance
     }
 }
 
-impl<T: Component> AsRef<T> for InstanceMutItem<'_, T> {
+impl<T: Component> AsRef<T> for InstanceMut<'_, T> {
     fn as_ref(&self) -> &T {
         self.data.as_ref()
     }
 }
 
-impl<T: Component> AsMut<T> for InstanceMutItem<'_, T> {
+impl<T: Component> AsMut<T> for InstanceMut<'_, T> {
     fn as_mut(&mut self) -> &mut T {
         self.data.as_mut()
     }
 }
 
-impl<T: Component> AsInstance<T> for InstanceMutItem<'_, T> {
+impl<T: Component> DetectChanges for InstanceMut<'_, T> {
+    fn is_added(&self) -> bool {
+        self.data.is_added()
+    }
+
+    fn is_changed(&self) -> bool {
+        self.data.is_changed()
+    }
+
+    fn last_changed(&self) -> Tick {
+        self.data.last_changed()
+    }
+}
+
+impl<T: Component> DetectChangesMut for InstanceMut<'_, T> {
+    type Inner = T;
+
+    fn set_changed(&mut self) {
+        self.data.set_changed();
+    }
+
+    fn set_last_changed(&mut self, last_changed: Tick) {
+        self.data.set_last_changed(last_changed);
+    }
+
+    fn bypass_change_detection(&mut self) -> &mut Self::Inner {
+        self.data.bypass_change_detection()
+    }
+}
+
+impl<T: Component> AsInstance<T> for InstanceMut<'_, T> {
     fn instance(&self) -> Instance<T> {
         self.instance
     }
