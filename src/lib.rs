@@ -148,6 +148,30 @@ impl SpawnInstanceWorld for World {
     }
 }
 
+pub trait InsertInstance {
+    fn insert_instance<T: Component>(&mut self, instance: T) -> InstanceCommands<'_, T>;
+}
+
+impl InsertInstance for EntityCommands<'_> {
+    fn insert_instance<T: Component>(&mut self, instance: T) -> InstanceCommands<'_, T> {
+        self.insert(instance);
+        // SAFE: `entity` is spawned as a valid instance of kind `T`.
+        unsafe { InstanceCommands::from_entity_unchecked(self.reborrow()) }
+    }
+}
+
+pub trait InsertInstanceWorld {
+    fn insert_instance<T: Component>(&mut self, instance: T) -> InstanceMut<T>;
+}
+
+impl InsertInstanceWorld for EntityWorldMut<'_> {
+    fn insert_instance<T: Component>(&mut self, instance: T) -> InstanceMut<T> {
+        self.insert(instance);
+        // SAFE: `entity` is spawned as a valid instance of kind `T`.
+        InstanceMut::from_entity(self).unwrap()
+    }
+}
+
 pub trait ComponentInstance {
     fn instance<T: Component>(&self, instance: Instance<T>) -> Option<&T>;
 
