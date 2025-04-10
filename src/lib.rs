@@ -6,10 +6,7 @@ pub mod prelude {
     pub use crate::{kind, Kind};
     pub use crate::{AsInstance, Instance, InstanceMut, InstanceRef};
     pub use crate::{GetInstanceCommands, InstanceCommands};
-    pub use crate::{KindBundle, SpawnInstance, SpawnInstanceWorld};
-
-    #[allow(deprecated)]
-    pub use crate::OfKind;
+    pub use crate::{SpawnInstance, SpawnInstanceWorld};
 }
 
 /// A type which represents the kind of an [`Entity`].
@@ -128,102 +125,42 @@ macro_rules! kind {
     };
 }
 
-/// A short alias for using a [`Kind`] as a [`QueryFilter`].
-///
-/// # Example
-/// ```
-/// # use bevy::prelude::*;
-/// # use moonshine_kind::prelude::*;
-///
-/// #[derive(Component)]
-/// struct Apple;
-///
-/// fn count_apples(query: Query<(), OfKind<Apple>>) -> usize {
-///     query.iter().count()
-/// }
-///
-/// # bevy_ecs::system::assert_is_system(count_apples);
-/// ```
-#[deprecated(since = "0.2.1", note = "use `T::Filter` instead")]
-pub type OfKind<T> = <T as Kind>::Filter;
-
-/// A [`Bundle`] which represents a [`Kind`].
-///
-/// # Usage
-/// This trait is used to allow spawning an [`Instance<T>`] where `T` is [`<Self as KindBundle>::Kind`][`KindBundle::Kind`].
-///
-/// Any [`Component`] is automatically a kind bundle of its own kind.
-///
-/// See [`SpawnInstance`] for more information.
-pub trait KindBundle: Bundle {
-    /// The [`Kind`] represented by this [`Bundle`].
-    type Kind: Kind;
-}
-
-impl<T: Kind + Bundle> KindBundle for T {
-    type Kind = T;
-}
-
-/// Extension trait to safely spawn an [`Instance<T>`] using [`Commands`] where `T` associated with a [`KindBundle`].
 pub trait SpawnInstance {
-    /// Spawns a new [`Instance<T>`] using its associated [`KindBundle`].
-    ///
-    /// # Example
-    /// ```
-    /// # use bevy::prelude::*;
-    /// # use moonshine_kind::prelude::*;
-    ///
-    /// #[derive(Component)]
-    /// struct Apple;
-    ///
-    /// fn spawn_apple(mut commands: Commands) {
-    ///     let apple: Instance<Apple> = commands.spawn_instance(Apple).instance();
-    ///     println!("Spawned {apple:?}!");
-    /// }
-    ///
-    /// # bevy_ecs::system::assert_is_system(spawn_apple);
-    #[deprecated(since = "0.2.1")]
-    fn spawn_instance<T: KindBundle>(&mut self, _: T) -> InstanceCommands<'_, T::Kind>;
+    fn spawn_instance<T: Component>(&mut self, instance: T) -> InstanceCommands<'_, T>;
 }
 
 impl SpawnInstance for Commands<'_, '_> {
-    fn spawn_instance<T: KindBundle>(&mut self, bundle: T) -> InstanceCommands<'_, T::Kind> {
-        let entity = self.spawn(bundle).id();
-        // SAFE: `entity` must be a valid instance of `T::Kind`.
+    fn spawn_instance<T: Component>(&mut self, instance: T) -> InstanceCommands<'_, T> {
+        let entity = self.spawn(instance).id();
+        // SAFE: `entity` is spawned as a valid instance of kind `T`.
         unsafe { InstanceCommands::from_entity_unchecked(self.entity(entity)) }
     }
 }
 
-/// Extension trait to safely spawn an [`Instance<T>`] using [`World`] where `T` associated with a [`KindBundle`].
 pub trait SpawnInstanceWorld {
-    /// Spawns a new [`Instance<T>`] using its associated [`KindBundle`].
-    ///
-    /// # Example
-    /// ```
-    /// # use bevy::prelude::*;
-    /// # use moonshine_kind::prelude::*;
-    ///
-    /// #[derive(Component)]
-    /// struct Apple;
-    ///
-    /// fn spawn_apple(world: &mut World) {
-    ///     let apple: Instance<Apple> = world.spawn_instance(Apple).instance();
-    ///     println!("Spawned {apple:?}!");
-    /// }
-    #[deprecated(since = "0.2.1")]
-    fn spawn_instance<T: KindBundle>(&mut self, _: T) -> InstanceMutItem<'_, T::Kind>
-    where
-        T::Kind: Component;
+    fn spawn_instance<T: Component>(&mut self, instance: T) -> Mut<T>;
 }
 
 impl SpawnInstanceWorld for World {
-    fn spawn_instance<T: KindBundle>(&mut self, bundle: T) -> InstanceMutItem<'_, T::Kind>
-    where
-        T::Kind: Component,
-    {
-        let entity = self.spawn(bundle).id();
-        // SAFE: `entity` must be a valid instance of kind `T`.
-        InstanceMutItem::from_entity(self, entity).unwrap()
+    fn spawn_instance<T: Component>(&mut self, instance: T) -> Mut<T> {
+        let entity = self.spawn(instance).id();
+        self.get_mut(entity).unwrap()
+    }
+}
+
+pub trait ComponentInstance {
+    fn instance<T: Component>(&self, instance: Instance<T>) -> Option<&T>;
+
+    fn instance_mut<T: Component>(&mut self, instance: Instance<T>) -> Option<Mut<T>>;
+}
+
+impl ComponentInstance for World {
+    fn instance<T: Component>(&self, instance: Instance<T>) -> Option<&T> {
+        self.get::<T>(instance.entity())
+    }
+
+    fn instance_mut<T: Component>(&mut self, instance: Instance<T>) -> Option<Mut<T>> {
+        self.get_mut::<T>(instance.entity())
     }
 }
 

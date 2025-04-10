@@ -612,10 +612,11 @@ impl<'a, T: Component> InstanceMut<'a, T> {
     /// Creates a new [`InstanceMut<T>`] from an [`EntityMut`] if it contains a given [`Component`] of type `T`.
     pub fn from_entity(entity: &'a mut EntityWorldMut) -> Option<Self> {
         let id = entity.id();
-        entity.get_mut::<T>().map(|data| Self {
-            data,
-            // SAFE: Kind is validated by `entity.get()` above.
+        let data = entity.get_mut::<T>()?;
+        Some(Self {
+            // SAFE: Kind is validated by `entity.get_mut()` above.
             instance: unsafe { Instance::from_entity_unchecked(id) },
+            data,
         })
     }
 }
