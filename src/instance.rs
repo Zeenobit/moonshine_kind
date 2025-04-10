@@ -697,6 +697,17 @@ impl<'a, T: Kind> InstanceCommands<'a, T> {
         Self(entity, PhantomData)
     }
 
+    pub fn from_entity(entity: EntityRef, commands: &'a mut Commands) -> Option<Self>
+    where
+        T: Component,
+    {
+        if entity.contains::<T>() {
+            Some(Self(commands.entity(entity.id()), PhantomData))
+        } else {
+            None
+        }
+    }
+
     /// Returns the associated [`Instance<T>`].
     pub fn instance(&self) -> Instance<T> {
         // SAFE: `self.entity()` must be a valid instance of kind `T`.
