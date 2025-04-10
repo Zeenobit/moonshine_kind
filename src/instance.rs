@@ -325,6 +325,12 @@ pub trait AsInstance<T: Kind> {
     }
 }
 
+impl<T: Kind> AsInstance<T> for Instance<T> {
+    fn instance(&self) -> Instance<T> {
+        *self
+    }
+}
+
 /// A [`QueryData`] item which represents a reference to an [`Instance<T>`] and its associated [`Component`].
 ///
 /// # Usage
