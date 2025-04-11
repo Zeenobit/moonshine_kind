@@ -317,7 +317,7 @@ impl From<Entity> for Instance<Any> {
     }
 }
 
-pub trait AsInstance<T: Kind> {
+pub trait GetInstance<T: Kind> {
     fn instance(&self) -> Instance<T>;
 
     fn entity(&self) -> Entity {
@@ -506,7 +506,7 @@ impl<T: Component> AsRef<T> for InstanceRef<'_, T> {
     }
 }
 
-impl<T: Component> AsInstance<T> for InstanceRef<'_, T> {
+impl<T: Component> GetInstance<T> for InstanceRef<'_, T> {
     fn instance(&self) -> Instance<T> {
         self.instance
     }
@@ -697,7 +697,7 @@ impl<T: Component> DetectChangesMut for InstanceMut<'_, T> {
     }
 }
 
-impl<T: Component> AsInstance<T> for InstanceMut<'_, T> {
+impl<T: Component> GetInstance<T> for InstanceMut<'_, T> {
     fn instance(&self) -> Instance<T> {
         self.instance
     }
@@ -726,7 +726,7 @@ impl<'w, T: Component> InstanceWorldMut<'w, T> {
     }
 }
 
-impl<T: Kind> AsInstance<T> for InstanceWorldMut<'_, T> {
+impl<T: Kind> GetInstance<T> for InstanceWorldMut<'_, T> {
     fn instance(&self) -> Instance<T> {
         // SAFE: `self.entity()` must be a valid instance of kind `T`.
         unsafe { Instance::from_entity_unchecked(self.0.id()) }
@@ -878,7 +878,7 @@ impl<T: Kind> DerefMut for InstanceCommands<'_, T> {
     }
 }
 
-impl<T: Kind> AsInstance<T> for InstanceCommands<'_, T> {
+impl<T: Kind> GetInstance<T> for InstanceCommands<'_, T> {
     fn instance(&self) -> Instance<T> {
         self.instance()
     }
