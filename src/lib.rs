@@ -5,7 +5,9 @@ use bevy_ecs::{prelude::*, query::QueryFilter};
 pub mod prelude {
     pub use crate::{kind, Kind};
     pub use crate::{AsInstance, Instance, InstanceMut, InstanceRef};
-    pub use crate::{ComponentInstance, SpawnInstance, SpawnInstanceWorld};
+    pub use crate::{
+        ComponentInstance, InsertInstance, InsertInstanceWorld, SpawnInstance, SpawnInstanceWorld,
+    };
     pub use crate::{GetInstanceCommands, InstanceCommands};
 }
 
@@ -138,13 +140,15 @@ impl SpawnInstance for Commands<'_, '_> {
 }
 
 pub trait SpawnInstanceWorld {
-    fn spawn_instance<T: Component>(&mut self, instance: T) -> Mut<T>;
+    fn spawn_instance<T: Component>(&mut self, instance: T) -> InstanceWorldMut<T>;
 }
 
 impl SpawnInstanceWorld for World {
-    fn spawn_instance<T: Component>(&mut self, instance: T) -> Mut<T> {
-        let entity = self.spawn(instance).id();
-        self.get_mut(entity).unwrap()
+    fn spawn_instance<T: Component>(&mut self, instance: T) -> InstanceWorldMut<T> {
+        let mut entity = self.spawn_empty();
+        entity.insert(instance);
+        // SAFE: `entity` is spawned as a valid instance of kind `T`.
+        unsafe { InstanceWorldMut::from_entity_unchecked(entity) }
     }
 }
 

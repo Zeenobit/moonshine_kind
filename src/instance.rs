@@ -703,6 +703,50 @@ impl<T: Component> AsInstance<T> for InstanceMut<'_, T> {
     }
 }
 
+pub struct InstanceWorldMut<'w, T: Kind>(EntityWorldMut<'w>, PhantomData<T>);
+
+impl<'w, T: Kind> InstanceWorldMut<'w, T> {
+    /// Creates a new [`InstanceWorldMut<T>`] from [`EntityWorldMut`] without any validation.
+    ///
+    /// # Safety
+    /// Assumes `entity` is a valid instance of kind `T`.
+    pub unsafe fn from_entity_unchecked(entity: EntityWorldMut<'w>) -> Self {
+        Self(entity, PhantomData)
+    }
+}
+
+impl<'w, T: Component> InstanceWorldMut<'w, T> {
+    /// Creates a new [`InstanceWorldMut<T>`] from [`EntityWorldMut`] if it contains a [`Component`] of type `T`.
+    pub fn from_entity(entity: EntityWorldMut<'w>) -> Option<Self> {
+        if entity.contains::<T>() {
+            Some(Self(entity, PhantomData))
+        } else {
+            None
+        }
+    }
+}
+
+impl<T: Kind> AsInstance<T> for InstanceWorldMut<'_, T> {
+    fn instance(&self) -> Instance<T> {
+        // SAFE: `self.entity()` must be a valid instance of kind `T`.
+        unsafe { Instance::from_entity_unchecked(self.0.id()) }
+    }
+}
+
+impl<'w, T: Kind> Deref for InstanceWorldMut<'w, T> {
+    type Target = EntityWorldMut<'w>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<'w, T: Kind> DerefMut for InstanceWorldMut<'w, T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
 /// Extension trait to access [`InstanceCommands<T>`] from [`Commands`].
 ///
 /// See [`InstanceCommands`] for more information.
