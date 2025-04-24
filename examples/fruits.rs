@@ -66,13 +66,12 @@ fn should_eat(input: Res<ButtonInput<KeyCode>>) -> bool {
 // Try to eat a fruit if there is one.
 // Because of kind semantics, it is (somewhat) guaranteed that only humans can eat fruits.
 fn try_eat_fruit(
-    human: Query<Instance<Human>>,
+    human: Single<Instance<Human>>,
     fruits: Query<Instance<Fruit>>,
     mut commands: Commands,
 ) {
-    let human = human.single();
     if let Some(fruit) = fruits.iter().next() {
-        commands.instance(human).eat(fruit);
+        commands.instance(*human).eat(fruit);
     } else {
         println!("No fruit to eat");
     }

@@ -6,6 +6,8 @@ use std::{
     ops::{Deref, DerefMut},
 };
 
+use bevy_ecs::change_detection::MaybeLocation;
+use bevy_ecs::component::Mutable;
 use bevy_ecs::{
     archetype::Archetype,
     component::{ComponentId, Components, Tick},
@@ -228,15 +230,9 @@ impl<T: Kind> Deref for Instance<T> {
 }
 
 unsafe impl<T: Kind> WorldQuery for Instance<T> {
-    type Item<'a> = Instance<T>;
-
     type Fetch<'a> = <T::Filter as WorldQuery>::Fetch<'a>;
 
     type State = <T::Filter as WorldQuery>::State;
-
-    fn shrink<'wlong: 'wshort, 'wshort>(item: Self::Item<'wlong>) -> Self::Item<'wshort> {
-        item
-    }
 
     fn shrink_fetch<'wlong: 'wshort, 'wshort>(fetch: Self::Fetch<'wlong>) -> Self::Fetch<'wshort> {
         <T::Filter as WorldQuery>::shrink_fetch(fetch)
@@ -265,14 +261,6 @@ unsafe impl<T: Kind> WorldQuery for Instance<T> {
         <T::Filter as WorldQuery>::set_table(fetch, state, table)
     }
 
-    unsafe fn fetch<'w>(
-        _fetch: &mut Self::Fetch<'w>,
-        entity: Entity,
-        _table_row: TableRow,
-    ) -> Self::Item<'w> {
-        Instance::from_entity_unchecked(entity)
-    }
-
     fn update_component_access(state: &Self::State, access: &mut FilteredAccess<ComponentId>) {
         <T::Filter as WorldQuery>::update_component_access(state, access)
     }
@@ -297,11 +285,27 @@ unsafe impl<T: Kind> ReadOnlyQueryData for Instance<T> {}
 
 unsafe impl<T: Kind> QueryData for Instance<T> {
     type ReadOnly = Self;
+
+    const IS_READ_ONLY: bool = true;
+
+    type Item<'a> = Self;
+
+    fn shrink<'wlong: 'wshort, 'wshort>(item: Self::Item<'wlong>) -> Self::Item<'wshort> {
+        item
+    }
+
+    unsafe fn fetch<'w>(
+        _fetch: &mut Self::Fetch<'w>,
+        entity: Entity,
+        _table_row: TableRow,
+    ) -> Self::Item<'w> {
+        Instance::from_entity_unchecked(entity)
+    }
 }
 
 impl<T: Kind> MapEntities for Instance<T> {
     fn map_entities<M: EntityMapper>(&mut self, entity_mapper: &mut M) {
-        self.0 = entity_mapper.map_entity(self.0);
+        self.0 = entity_mapper.get_mapped(self.0);
     }
 }
 
@@ -371,18 +375,9 @@ pub struct InstanceRef<'a, T: Component> {
 }
 
 unsafe impl<T: Component> WorldQuery for InstanceRef<'_, T> {
-    type Item<'w> = InstanceRef<'w, T>;
-
     type Fetch<'w> = <(Instance<T>, &'static T) as WorldQuery>::Fetch<'w>;
 
     type State = <(Instance<T>, &'static T) as WorldQuery>::State;
-
-    fn shrink<'wlong: 'wshort, 'wshort>(item: Self::Item<'wlong>) -> Self::Item<'wshort> {
-        InstanceRef {
-            instance: item.instance,
-            data: item.data,
-        }
-    }
 
     fn shrink_fetch<'wlong: 'wshort, 'wshort>(fetch: Self::Fetch<'wlong>) -> Self::Fetch<'wshort> {
         <(Instance<T>, &T) as WorldQuery>::shrink_fetch(fetch)
@@ -412,15 +407,6 @@ unsafe impl<T: Component> WorldQuery for InstanceRef<'_, T> {
         <(Instance<T>, &T) as WorldQuery>::set_table(fetch, state, table)
     }
 
-    unsafe fn fetch<'w>(
-        fetch: &mut Self::Fetch<'w>,
-        entity: Entity,
-        table_row: TableRow,
-    ) -> Self::Item<'w> {
-        let (instance, data) = <(Instance<T>, &T) as WorldQuery>::fetch(fetch, entity, table_row);
-        Self::Item { instance, data }
-    }
-
     fn update_component_access(state: &Self::State, access: &mut FilteredAccess<ComponentId>) {
         <(Instance<T>, &T) as WorldQuery>::update_component_access(state, access)
     }
@@ -443,6 +429,26 @@ unsafe impl<T: Component> WorldQuery for InstanceRef<'_, T> {
 
 unsafe impl<T: Component> QueryData for InstanceRef<'_, T> {
     type ReadOnly = Self;
+
+    const IS_READ_ONLY: bool = true;
+
+    type Item<'a> = InstanceRef<'a, T>;
+
+    fn shrink<'wlong: 'wshort, 'wshort>(item: Self::Item<'wlong>) -> Self::Item<'wshort> {
+        InstanceRef {
+            instance: item.instance,
+            data: item.data,
+        }
+    }
+
+    unsafe fn fetch<'w>(
+        fetch: &mut Self::Fetch<'w>,
+        entity: Entity,
+        table_row: TableRow,
+    ) -> Self::Item<'w> {
+        let (instance, data) = <(Instance<T>, &T) as QueryData>::fetch(fetch, entity, table_row);
+        Self::Item { instance, data }
+    }
 }
 
 unsafe impl<T: Component> ReadOnlyQueryData for InstanceRef<'_, T> {}
@@ -527,18 +533,9 @@ pub struct InstanceMut<'a, T: Component> {
 }
 
 unsafe impl<T: Component> WorldQuery for InstanceMut<'_, T> {
-    type Item<'w> = InstanceMut<'w, T>;
-
     type Fetch<'w> = <(Instance<T>, &'static mut T) as WorldQuery>::Fetch<'w>;
 
     type State = <(Instance<T>, &'static mut T) as WorldQuery>::State;
-
-    fn shrink<'wlong: 'wshort, 'wshort>(item: Self::Item<'wlong>) -> Self::Item<'wshort> {
-        InstanceMut {
-            instance: item.instance,
-            data: item.data,
-        }
-    }
 
     fn shrink_fetch<'wlong: 'wshort, 'wshort>(fetch: Self::Fetch<'wlong>) -> Self::Fetch<'wshort> {
         <(Instance<T>, &mut T) as WorldQuery>::shrink_fetch(fetch)
@@ -568,16 +565,6 @@ unsafe impl<T: Component> WorldQuery for InstanceMut<'_, T> {
         <(Instance<T>, &mut T) as WorldQuery>::set_table(fetch, state, table)
     }
 
-    unsafe fn fetch<'w>(
-        fetch: &mut Self::Fetch<'w>,
-        entity: Entity,
-        table_row: TableRow,
-    ) -> Self::Item<'w> {
-        let (instance, data) =
-            <(Instance<T>, &mut T) as WorldQuery>::fetch(fetch, entity, table_row);
-        Self::Item { instance, data }
-    }
-
     fn update_component_access(state: &Self::State, access: &mut FilteredAccess<ComponentId>) {
         <(Instance<T>, &T) as WorldQuery>::update_component_access(state, access)
     }
@@ -598,13 +585,37 @@ unsafe impl<T: Component> WorldQuery for InstanceMut<'_, T> {
     }
 }
 
-unsafe impl<'a, T: Component> QueryData for InstanceMut<'a, T> {
-    type ReadOnly = InstanceRef<'a, T>;
+unsafe impl<'b, T: Component<Mutability = Mutable>> QueryData for InstanceMut<'b, T> {
+    type ReadOnly = InstanceRef<'b, T>;
+
+    const IS_READ_ONLY: bool = false;
+
+    type Item<'a> = InstanceMut<'a, T>;
+
+    fn shrink<'wlong: 'wshort, 'wshort>(item: Self::Item<'wlong>) -> Self::Item<'wshort> {
+        InstanceMut {
+            instance: item.instance,
+            data: item.data,
+        }
+    }
+
+    unsafe fn fetch<'w>(
+        fetch: &mut Self::Fetch<'w>,
+        entity: Entity,
+        table_row: TableRow,
+    ) -> Self::Item<'w> {
+        let (instance, data) =
+            <(Instance<T>, &mut T) as QueryData>::fetch(fetch, entity, table_row);
+        Self::Item { instance, data }
+    }
 }
 
 impl<'a, T: Component> InstanceMut<'a, T> {
-    /// Creates a new [`InstanceMut<T>`] from an [`EntityMut`] if it contains a given [`Component`] of type `T`.
-    pub fn from_entity(entity: &'a mut EntityWorldMut) -> Option<Self> {
+    /// Creates a new [`InstanceMut<T>`] from an [`EntityWorldMut`] if it contains a given [`Component`] of type `T`.
+    pub fn from_entity(entity: &'a mut EntityWorldMut) -> Option<Self>
+    where
+        T: Component<Mutability = Mutable>,
+    {
         let id = entity.id();
         let data = entity.get_mut::<T>()?;
         Some(Self {
@@ -679,6 +690,14 @@ impl<T: Component> DetectChanges for InstanceMut<'_, T> {
     fn last_changed(&self) -> Tick {
         self.data.last_changed()
     }
+
+    fn added(&self) -> Tick {
+        self.data.added()
+    }
+
+    fn changed_by(&self) -> MaybeLocation {
+        self.data.changed_by()
+    }
 }
 
 impl<T: Component> DetectChangesMut for InstanceMut<'_, T> {
@@ -694,6 +713,14 @@ impl<T: Component> DetectChangesMut for InstanceMut<'_, T> {
 
     fn bypass_change_detection(&mut self) -> &mut Self::Inner {
         self.data.bypass_change_detection()
+    }
+
+    fn set_added(&mut self) {
+        self.data.set_added();
+    }
+
+    fn set_last_added(&mut self, last_added: Tick) {
+        self.data.set_last_added(last_added);
     }
 }
 

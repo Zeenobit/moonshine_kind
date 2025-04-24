@@ -1,5 +1,6 @@
 #![doc = include_str!("../README.md")]
 
+use bevy_ecs::component::Mutable;
 use bevy_ecs::{prelude::*, query::QueryFilter};
 
 pub mod prelude {
@@ -165,11 +166,25 @@ impl InsertInstance for EntityCommands<'_> {
 }
 
 pub trait InsertInstanceWorld {
-    fn insert_instance<T: Component>(&mut self, instance: T) -> InstanceMut<T>;
+    fn insert_instance<T: Component>(&mut self, instance: T) -> InstanceRef<T>;
+
+    fn insert_instance_mut<T: Component<Mutability = Mutable>>(
+        &mut self,
+        instance: T,
+    ) -> InstanceMut<T>;
 }
 
 impl InsertInstanceWorld for EntityWorldMut<'_> {
-    fn insert_instance<T: Component>(&mut self, instance: T) -> InstanceMut<T> {
+    fn insert_instance<T: Component>(&mut self, instance: T) -> InstanceRef<T> {
+        self.insert(instance);
+        // SAFE: `entity` is spawned as a valid instance of kind `T`.
+        InstanceRef::from_entity(self.as_readonly()).unwrap()
+    }
+
+    fn insert_instance_mut<T: Component<Mutability = Mutable>>(
+        &mut self,
+        instance: T,
+    ) -> InstanceMut<T> {
         self.insert(instance);
         // SAFE: `entity` is spawned as a valid instance of kind `T`.
         InstanceMut::from_entity(self).unwrap()
@@ -179,7 +194,10 @@ impl InsertInstanceWorld for EntityWorldMut<'_> {
 pub trait ComponentInstance {
     fn instance<T: Component>(&self, instance: Instance<T>) -> Option<&T>;
 
-    fn instance_mut<T: Component>(&mut self, instance: Instance<T>) -> Option<Mut<T>>;
+    fn instance_mut<T: Component<Mutability = Mutable>>(
+        &mut self,
+        instance: Instance<T>,
+    ) -> Option<Mut<T>>;
 }
 
 impl ComponentInstance for World {
@@ -187,7 +205,10 @@ impl ComponentInstance for World {
         self.get::<T>(instance.entity())
     }
 
-    fn instance_mut<T: Component>(&mut self, instance: Instance<T>) -> Option<Mut<T>> {
+    fn instance_mut<T: Component<Mutability = Mutable>>(
+        &mut self,
+        instance: Instance<T>,
+    ) -> Option<Mut<T>> {
         self.get_mut::<T>(instance.entity())
     }
 }
