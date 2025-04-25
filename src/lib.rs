@@ -53,6 +53,7 @@ pub trait Kind: 'static + Send + Sized + Sync {
     /// Returns the debug name of this kind.
     ///
     /// By default, this is the short type name (without path) of this kind.
+    /// This is mainly used for [`Debug`](std::fmt::Debug) and [`Display`](std::fmt::Display) implementations.
     fn debug_name() -> String {
         disqualified::ShortName::of::<Self>().to_string()
     }
