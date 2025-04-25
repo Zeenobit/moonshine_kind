@@ -50,7 +50,7 @@ pub trait Kind: 'static + Send + Sized + Sync {
     ///
     /// By default, this is the short type name (without path) of this kind.
     fn debug_name() -> String {
-        moonshine_util::get_short_name(std::any::type_name::<Self>())
+        disqualified::ShortName(std::any::type_name::<Self>()).to_string()
     }
 }
 
