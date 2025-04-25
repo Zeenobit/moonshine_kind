@@ -129,6 +129,8 @@ fn fresh_apples(
 }
 ```
 
+In other words, `InstanceRef<T>` is analogous to `(Instance<T>, &T)` and `InstanceMut<T>` is analogous to `(Instance<T>, &mut T)`.
+
 ### `InstanceCommands`
 
 You may also extend [`InstanceCommands<T>`] to define [`Commands`] specific to a [`Kind`].

@@ -375,6 +375,8 @@ pub trait ContainsInstance<T: Kind> {
 
 /// A [`QueryData`] item which represents a reference to an [`Instance<T>`] and its associated [`Component`].
 ///
+/// This is analogous to a `(Instance<T>, &T)` query.
+///
 /// # Usage
 /// If a [`Kind`] is also a component, it is often convenient to access the instance and component data together.
 /// This type is designed to make these queries more ergonomic.
@@ -413,10 +415,7 @@ pub trait ContainsInstance<T: Kind> {
 ///
 /// # bevy_ecs::system::assert_is_system(fresh_apples);
 /// ```
-pub struct InstanceRef<'a, T: Component> {
-    instance: Instance<T>,
-    data: &'a T,
-}
+pub struct InstanceRef<'a, T: Component>(Instance<T>, &'a T);
 
 unsafe impl<T: Component> WorldQuery for InstanceRef<'_, T> {
     type Fetch<'w> = <(Instance<T>, &'static T) as WorldQuery>::Fetch<'w>;
@@ -479,10 +478,7 @@ unsafe impl<T: Component> QueryData for InstanceRef<'_, T> {
     type Item<'a> = InstanceRef<'a, T>;
 
     fn shrink<'wlong: 'wshort, 'wshort>(item: Self::Item<'wlong>) -> Self::Item<'wshort> {
-        InstanceRef {
-            instance: item.instance,
-            data: item.data,
-        }
+        InstanceRef(item.0, item.1)
     }
 
     unsafe fn fetch<'w>(
@@ -491,7 +487,7 @@ unsafe impl<T: Component> QueryData for InstanceRef<'_, T> {
         table_row: TableRow,
     ) -> Self::Item<'w> {
         let (instance, data) = <(Instance<T>, &T) as QueryData>::fetch(fetch, entity, table_row);
-        Self::Item { instance, data }
+        InstanceRef(instance, data)
     }
 }
 
@@ -500,11 +496,11 @@ unsafe impl<T: Component> ReadOnlyQueryData for InstanceRef<'_, T> {}
 impl<'a, T: Component> InstanceRef<'a, T> {
     /// Creates a new [`InstanceRef<T>`] from an [`EntityRef`] if it contains a given [`Component`] of type `T`.
     pub fn from_entity(entity: EntityRef<'a>) -> Option<Self> {
-        Some(Self {
-            data: entity.get()?,
+        Some(Self(
             // SAFE: Kind is validated by `entity.get()` above.
-            instance: unsafe { Instance::from_entity_unchecked(entity.id()) },
-        })
+            unsafe { Instance::from_entity_unchecked(entity.id()) },
+            entity.get()?,
+        ))
     }
 }
 
@@ -530,7 +526,7 @@ impl<T: Component> From<&InstanceRef<'_, T>> for Instance<T> {
 
 impl<T: Component> PartialEq for InstanceRef<'_, T> {
     fn eq(&self, other: &Self) -> bool {
-        self.instance == other.instance
+        self.0 == other.0
     }
 }
 
@@ -540,29 +536,31 @@ impl<T: Component> Deref for InstanceRef<'_, T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
-        self.data
+        self.1
     }
 }
 
 impl<T: Component> AsRef<Instance<T>> for InstanceRef<'_, T> {
     fn as_ref(&self) -> &Instance<T> {
-        &self.instance
+        &self.0
     }
 }
 
 impl<T: Component> AsRef<T> for InstanceRef<'_, T> {
     fn as_ref(&self) -> &T {
-        self.data
+        self.1
     }
 }
 
 impl<T: Component> ContainsInstance<T> for InstanceRef<'_, T> {
     fn instance(&self) -> Instance<T> {
-        self.instance
+        self.0
     }
 }
 
 /// A [`QueryData`] item which represents a mutable reference to an [`Instance<T>`] and its associated [`Component`].
+///
+/// This is analogous to a `(Instance<T>, &mut T)` query.
 ///
 /// # Usage
 /// This type behaves similar like [`InstanceRef<T>`] but allows mutable access to its associated [`Component`].
@@ -571,10 +569,7 @@ impl<T: Component> ContainsInstance<T> for InstanceRef<'_, T> {
 /// See [`InstanceMut::from_entity`] for more details.
 ///
 /// See [`InstanceRef<T>`] for more information and examples.
-pub struct InstanceMut<'a, T: Component> {
-    instance: Instance<T>,
-    data: Mut<'a, T>,
-}
+pub struct InstanceMut<'a, T: Component>(Instance<T>, Mut<'a, T>);
 
 unsafe impl<T: Component> WorldQuery for InstanceMut<'_, T> {
     type Fetch<'w> = <(Instance<T>, &'static mut T) as WorldQuery>::Fetch<'w>;
@@ -637,10 +632,7 @@ unsafe impl<'b, T: Component<Mutability = Mutable>> QueryData for InstanceMut<'b
     type Item<'a> = InstanceMut<'a, T>;
 
     fn shrink<'wlong: 'wshort, 'wshort>(item: Self::Item<'wlong>) -> Self::Item<'wshort> {
-        InstanceMut {
-            instance: item.instance,
-            data: item.data,
-        }
+        InstanceMut(item.0, item.1)
     }
 
     unsafe fn fetch<'w>(
@@ -650,7 +642,7 @@ unsafe impl<'b, T: Component<Mutability = Mutable>> QueryData for InstanceMut<'b
     ) -> Self::Item<'w> {
         let (instance, data) =
             <(Instance<T>, &mut T) as QueryData>::fetch(fetch, entity, table_row);
-        Self::Item { instance, data }
+        InstanceMut(instance, data)
     }
 }
 
@@ -662,11 +654,11 @@ impl<'a, T: Component> InstanceMut<'a, T> {
     {
         let id = entity.id();
         let data = entity.get_mut::<T>()?;
-        Some(Self {
+        Some(Self(
             // SAFE: Kind is validated by `entity.get_mut()` above.
-            instance: unsafe { Instance::from_entity_unchecked(id) },
+            unsafe { Instance::from_entity_unchecked(id) },
             data,
-        })
+        ))
     }
 }
 
@@ -684,7 +676,7 @@ impl<T: Component> From<&InstanceMut<'_, T>> for Instance<T> {
 
 impl<T: Component> PartialEq for InstanceMut<'_, T> {
     fn eq(&self, other: &Self) -> bool {
-        self.instance == other.instance
+        self.0 == other.0
     }
 }
 
@@ -694,53 +686,53 @@ impl<T: Component> Deref for InstanceMut<'_, T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
-        self.data.as_ref()
+        self.1.as_ref()
     }
 }
 
 impl<T: Component> DerefMut for InstanceMut<'_, T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        self.data.as_mut()
+        self.1.as_mut()
     }
 }
 
 impl<T: Component> AsRef<Instance<T>> for InstanceMut<'_, T> {
     fn as_ref(&self) -> &Instance<T> {
-        &self.instance
+        &self.0
     }
 }
 
 impl<T: Component> AsRef<T> for InstanceMut<'_, T> {
     fn as_ref(&self) -> &T {
-        self.data.as_ref()
+        self.1.as_ref()
     }
 }
 
 impl<T: Component> AsMut<T> for InstanceMut<'_, T> {
     fn as_mut(&mut self) -> &mut T {
-        self.data.as_mut()
+        self.1.as_mut()
     }
 }
 
 impl<T: Component> DetectChanges for InstanceMut<'_, T> {
     fn is_added(&self) -> bool {
-        self.data.is_added()
+        self.1.is_added()
     }
 
     fn is_changed(&self) -> bool {
-        self.data.is_changed()
+        self.1.is_changed()
     }
 
     fn last_changed(&self) -> Tick {
-        self.data.last_changed()
+        self.1.last_changed()
     }
 
     fn added(&self) -> Tick {
-        self.data.added()
+        self.1.added()
     }
 
     fn changed_by(&self) -> MaybeLocation {
-        self.data.changed_by()
+        self.1.changed_by()
     }
 }
 
@@ -748,29 +740,29 @@ impl<T: Component> DetectChangesMut for InstanceMut<'_, T> {
     type Inner = T;
 
     fn set_changed(&mut self) {
-        self.data.set_changed();
+        self.1.set_changed();
     }
 
     fn set_last_changed(&mut self, last_changed: Tick) {
-        self.data.set_last_changed(last_changed);
+        self.1.set_last_changed(last_changed);
     }
 
     fn bypass_change_detection(&mut self) -> &mut Self::Inner {
-        self.data.bypass_change_detection()
+        self.1.bypass_change_detection()
     }
 
     fn set_added(&mut self) {
-        self.data.set_added();
+        self.1.set_added();
     }
 
     fn set_last_added(&mut self, last_added: Tick) {
-        self.data.set_last_added(last_added);
+        self.1.set_last_added(last_added);
     }
 }
 
 impl<T: Component> ContainsInstance<T> for InstanceMut<'_, T> {
     fn instance(&self) -> Instance<T> {
-        self.instance
+        self.0
     }
 }
 
