@@ -1,8 +1,5 @@
 #![doc = include_str!("../README.md")]
 
-use bevy_ecs::component::Mutable;
-use bevy_ecs::{prelude::*, query::QueryFilter};
-
 pub mod prelude {
     pub use crate::{kind, Kind};
     pub use crate::{
@@ -11,6 +8,13 @@ pub mod prelude {
     pub use crate::{GetInstance, Instance, InstanceMut, InstanceRef};
     pub use crate::{GetInstanceCommands, InstanceCommands};
 }
+
+mod instance;
+
+pub use instance::*;
+
+use bevy_ecs::component::Mutable;
+use bevy_ecs::{prelude::*, query::QueryFilter};
 
 /// A type which represents the kind of an [`Entity`].
 ///
@@ -66,10 +70,6 @@ pub struct Any;
 impl Kind for Any {
     type Filter = ();
 }
-
-mod instance;
-
-pub use instance::*;
 
 /// A trait which allows safe casting from one [`Kind`] to another.
 ///
@@ -128,7 +128,9 @@ macro_rules! kind {
     };
 }
 
+/// Extension trait used to spawn instances via [`Commands`].
 pub trait SpawnInstance {
+    /// Spawns a new [`Entity`] which contains the given instance of `T` and returns an [`InstanceCommands<T>`] for it.
     fn spawn_instance<T: Component>(&mut self, instance: T) -> InstanceCommands<'_, T>;
 }
 
@@ -140,7 +142,9 @@ impl SpawnInstance for Commands<'_, '_> {
     }
 }
 
+/// Extension trait used to spawn instances via [`World`].
 pub trait SpawnInstanceWorld {
+    /// Spawns a new [`Entity`] which contains the given instance of `T` and returns an [`InstanceWorldMut<T>`] for it.
     fn spawn_instance<T: Component>(&mut self, instance: T) -> InstanceWorldMut<T>;
 }
 
@@ -153,7 +157,9 @@ impl SpawnInstanceWorld for World {
     }
 }
 
+/// Extension trait used to insert instances via [`EntityCommands`].
 pub trait InsertInstance {
+    /// Inserts the given instance of `T` into the entity and returns an [`InstanceCommands<T>`] for it.
     fn insert_instance<T: Component>(&mut self, instance: T) -> InstanceCommands<'_, T>;
 }
 
@@ -165,9 +171,14 @@ impl InsertInstance for EntityCommands<'_> {
     }
 }
 
+/// Extension trait used to insert instances via [`EntityWorldMut`].
 pub trait InsertInstanceWorld {
+    /// Inserts the given instance of `T` into the entity and returns an [`InstanceRef<T>`] for it.
     fn insert_instance<T: Component>(&mut self, instance: T) -> InstanceRef<T>;
 
+    /// Inserts the given instance of `T` into the entity and returns an [`InstanceMut<T>`] for it.
+    ///
+    /// This requires `T` to be [`Mutable`].
     fn insert_instance_mut<T: Component<Mutability = Mutable>>(
         &mut self,
         instance: T,
@@ -191,9 +202,14 @@ impl InsertInstanceWorld for EntityWorldMut<'_> {
     }
 }
 
+/// Extension trait used to get [`Component`] data from an [`Instance<T>`] via [`World`].
 pub trait ComponentInstance {
+    /// Returns a reference to the given instance.
     fn instance<T: Component>(&self, instance: Instance<T>) -> Option<&T>;
 
+    /// Returns a mutable reference to the given instance.
+    ///
+    /// This requires `T` to be [`Mutable`].
     fn instance_mut<T: Component<Mutability = Mutable>>(
         &mut self,
         instance: Instance<T>,
