@@ -48,7 +48,7 @@ struct FruitBasket {
 
 ## Usage
 
-### `Kind` and `Instance`
+### [`Kind`] and [`Instance<T>`]
 
 By definition, an [`Entity`] is of [`Kind`] `T` if it matches [`Query<(), <T as Kind>::Filter>`][`Query`].
 
@@ -97,7 +97,7 @@ fn count_fruits(fruits: Query<Instance<Fruit>>) {
 }
 ```
 
-### `InstanceRef` and `InstanceMut`
+### [`InstanceRef<T>`] and [`InstanceMut<T>`]
 
 If a [`Kind`] is also a [`Component`], you may use [`InstanceRef<T>`] and [`InstanceMut<T>`] to access [`Instance<T>`] and the associated component data with a single query term:
 
@@ -131,7 +131,7 @@ fn fresh_apples(
 
 In other words, `InstanceRef<T>` is analogous to `(Instance<T>, &T)` and `InstanceMut<T>` is analogous to `(Instance<T>, &mut T)`.
 
-### `InstanceCommands`
+### [`InstanceCommands<T>`]
 
 You may also extend [`InstanceCommands<T>`] to define [`Commands`] specific to a [`Kind`].
 
@@ -172,7 +172,7 @@ fn eat(
 }
 ```
 
-### `Instance<Any>`
+### [`Instance<Any>`][`Instance<T>`]
 
 When writing generic code, it may be desirable to have an instance that can be of [`Any`] kind:
 ```rust
@@ -184,7 +184,7 @@ struct Container<T: Kind = Any> {
 ```
 [`Instance<Any>`][`Instance<T>`] is functionally equivalent to [`Entity`].
 
-### `CastInto`
+### [`CastInto`]
 
 By definition, any [`Instance<T>`] is safely convertible to any [`Instance<U>`][`Instance<T>`] if [`CastInto<U>`][`CastInto`] is implemented for `T`.
 
@@ -269,6 +269,17 @@ fn prune_fruits(
     fruits
 }
 ```
+
+## Installation
+
+Add the following to your `Cargo.toml`:
+
+```toml
+[dependencies]
+moonshine-kind = "0.2.2"
+```
+
+This crate is also included as part of [🍸 Moonshine Core](https://github.com/Zeenobit/moonshine_core).
 
 ## Support
 
