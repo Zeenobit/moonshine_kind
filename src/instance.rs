@@ -8,6 +8,7 @@ use std::{
 
 use bevy_ecs::change_detection::MaybeLocation;
 use bevy_ecs::component::Mutable;
+use bevy_ecs::relationship::RelationshipSourceCollection;
 use bevy_ecs::{
     archetype::Archetype,
     component::{ComponentId, Components, Tick},
@@ -312,6 +313,46 @@ impl<T: Kind> MapEntities for Instance<T> {
 impl<T: Kind> From<Instance<T>> for Entity {
     fn from(instance: Instance<T>) -> Self {
         instance.entity()
+    }
+}
+
+impl<T: Kind> RelationshipSourceCollection for Instance<T> {
+    type SourceIter<'a> = <Entity as RelationshipSourceCollection>::SourceIter<'a>;
+
+    fn new() -> Self {
+        Self::PLACEHOLDER
+    }
+
+    fn with_capacity(_capacity: usize) -> Self {
+        Self::new()
+    }
+
+    fn reserve(&mut self, additional: usize) {
+        self.0.reserve(additional);
+    }
+
+    fn add(&mut self, entity: Entity) -> bool {
+        self.0.add(entity)
+    }
+
+    fn remove(&mut self, entity: Entity) -> bool {
+        self.0.remove(entity)
+    }
+
+    fn iter(&self) -> Self::SourceIter<'_> {
+        self.0.iter()
+    }
+
+    fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    fn clear(&mut self) {
+        self.0.clear();
+    }
+
+    fn shrink_to_fit(&mut self) {
+        self.0.shrink_to_fit();
     }
 }
 
