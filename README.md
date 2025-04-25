@@ -20,6 +20,7 @@ struct FruitBasket {
     fruits: Vec<Entity>
 }
 ```
+
 A problem with using entities in this way is the lack of information about the "kind" of the entity. This results in code that is error prone, hard to debug, and read.
 
 This crate attempts to solve this problem by introducing a new [`Instance<T>`] type which behaves like an [`Entity`] but also contains information about the "kind" of the entity:
@@ -42,6 +43,7 @@ struct FruitBasket {
 - Improved type safety and readability for Bevy code
 - Ability to define custom entity kinds
 - Ability to define commands for specific entity kinds
+- No runtime overhead
 - Zero or minimal boilerplate
 
 ## Usage
@@ -51,6 +53,7 @@ struct FruitBasket {
 By definition, an [`Entity`] is of [`Kind`] `T` if it matches [`Query<(), <T as Kind>::Filter>`][`Query`].
 
 Any [`Component`] automatically implements the [`Kind`] trait:
+
 ```rust,ignore
 impl<T: Component> Kind for T {
     type Filter = With<T>;
@@ -58,6 +61,7 @@ impl<T: Component> Kind for T {
 ```
 
 This means you may use any [`Component`] as an argument to [`Instance<T>`]:
+
 ```rust
 use bevy::prelude::*;
 use moonshine_kind::prelude::*;
@@ -71,6 +75,7 @@ fn count_apples(apples: Query<Instance<Apple>>) {
 ```
 
 Alternatively, you may also define your own kind by implementing the [`Kind`] trait:
+
 ```rust
 use bevy::prelude::*;
 use moonshine_kind::prelude::*;
@@ -95,6 +100,7 @@ fn count_fruits(fruits: Query<Instance<Fruit>>) {
 ### `InstanceRef` and `InstanceMut`
 
 If a [`Kind`] is also a [`Component`], you may use [`InstanceRef<T>`] and [`InstanceMut<T>`] to access [`Instance<T>`] and the associated component data with a single query term:
+
 ```rust
 use bevy::prelude::*;
 use moonshine_kind::prelude::*;
@@ -122,10 +128,13 @@ fn fresh_apples(
     fresh_apples
 }
 ```
+
 ### `InstanceCommands`
+
 You may also extend [`InstanceCommands<T>`] to define [`Commands`] specific to a [`Kind`].
 
 [`InstanceCommands<T>`] behaves like [`EntityCommands`], and is accessible via `commands.instance(...)` (see [`GetInstanceCommands<T>`] for details):
+
 ```rust
 use bevy::prelude::*;
 use moonshine_kind::prelude::*;
@@ -173,13 +182,11 @@ struct Container<T: Kind = Any> {
 ```
 [`Instance<Any>`][`Instance<T>`] is functionally equivalent to [`Entity`].
 
-### Casting
+### `CastInto`
 
-An [`Instance<T>`] is safely convertible to an [`Instance<U>`][`Instance<T>`] if [`CastInto<U>`][`CastInto`] is implemented for `T`.
+By definition, any [`Instance<T>`] is safely convertible to any [`Instance<U>`][`Instance<T>`] if [`CastInto<U>`][`CastInto`] is implemented for `T`.
 
-This is done by using the `.cast_into()` method:
-
-You may use the [`kind`] macro to implement this trait for given kind pair:
+This is done using the [`CastInto`] trait. The [`kind`] macro may be used to conveniently implement this:
 
 ```rust
 use bevy::prelude::*;
@@ -207,6 +214,22 @@ fn init_fruit(fruit: Instance<Fruit>, commands: &mut Commands) {
 }
 ```
 
+[Required Components](https://docs.rs/bevy/latest/bevy/ecs/component/trait.Component.html#required-components) are a great way to enforce this type of "kind polymorphism" at runtime:
+
+```rust
+use bevy::prelude::*;
+use moonshine_kind::prelude::*;
+
+#[derive(Component)]
+struct Apple;
+
+#[derive(Component)]
+#[require(Apple)] // Require all GrannySmith instances to also have Apple
+struct GrannySmith;
+
+kind!(GrannySmith is Apple); // GrannySmith is an Apple; Guaranteed!
+```
+
 ## Examples
 
 See [examples/fruits.rs](examples/fruits.rs) for a complete example.
@@ -222,6 +245,7 @@ This means that if an entity is modified in such a way that it no longer matches
 It is recommended to avoid using kind semantics for components that may be removed at runtime without despawning their associated entity.
 
 However, if necessary, you may check instances for validity prior to usage:
+
 ```rust
 use bevy::prelude::*;
 use moonshine_kind::prelude::*;
@@ -263,4 +287,4 @@ You may also contact me on the official [Bevy Discord](https://discord.gg/bevy) 
 [`GetInstanceCommands<T>`]:https://docs.rs/moonshine-kind/latest/moonshine_kind/trait.GetInstanceCommands.html
 [`Any`]:https://docs.rs/moonshine-kind/latest/moonshine_kind/struct.Any.html
 [`CastInto`]:https://docs.rs/moonshine-kind/latest/moonshine_kind/trait.CastInto.html
-[`safe_cast`]:https://docs.rs/moonshine-kind/latest/moonshine_kind/macro.safe_cast.html
+[`kind`]:https://docs.rs/moonshine-kind/latest/moonshine_kind/macro.kind.html
