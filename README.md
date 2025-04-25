@@ -44,7 +44,7 @@ struct FruitBasket {
 - Ability to define custom entity kinds
 - Ability to define commands for specific entity kinds
 - No runtime overhead
-- Zero or minimal boilerplate
+- Zero boilerplate
 
 ## Usage
 
