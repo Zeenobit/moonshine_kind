@@ -54,7 +54,7 @@ pub trait Kind: 'static + Send + Sized + Sync {
     ///
     /// By default, this is the short type name (without path) of this kind.
     fn debug_name() -> String {
-        disqualified::ShortName(std::any::type_name::<Self>()).to_string()
+        disqualified::ShortName::of::<Self>().to_string()
     }
 }
 
