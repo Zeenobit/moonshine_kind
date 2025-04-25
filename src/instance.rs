@@ -251,11 +251,12 @@ unsafe impl<T: Kind> WorldQuery for Instance<T> {
     const IS_DENSE: bool = <T::Filter as WorldQuery>::IS_DENSE;
 
     unsafe fn set_archetype<'w>(
-        _fetch: &mut Self::Fetch<'w>,
-        _state: &Self::State,
-        _archetype: &'w Archetype,
-        _table: &'w Table,
+        fetch: &mut Self::Fetch<'w>,
+        state: &Self::State,
+        archetype: &'w Archetype,
+        table: &'w Table,
     ) {
+        <T::Filter as WorldQuery>::set_archetype(fetch, state, archetype, table)
     }
 
     unsafe fn set_table<'w>(fetch: &mut Self::Fetch<'w>, state: &Self::State, table: &'w Table) {
