@@ -165,7 +165,7 @@ fn eat(
     human: Query<Instance<Human>>,
     fruits: Query<Instance<Fruit>>, mut commands: Commands
 ) {
-    let human = human.single();
+    let human = human.single().unwrap();
     if let Some(fruit) = fruits.iter().next() {
         commands.instance(human).eat(fruit);
     }
@@ -224,7 +224,7 @@ fn init_fruit(fruit: Instance<Fruit>, commands: &mut Commands) {
 use bevy::prelude::*;
 use moonshine_kind::prelude::*;
 
-#[derive(Component)]
+#[derive(Component, Default)]
 struct Apple;
 
 #[derive(Component)]
