@@ -1,5 +1,7 @@
 #![doc = include_str!("../README.md")]
+#![warn(missing_docs)]
 
+/// Prelude module to import all necessary traits and types for [`Kind`] semantics.
 pub mod prelude {
     pub use crate::{kind, Kind};
     pub use crate::{
@@ -48,6 +50,7 @@ use bevy_ecs::{prelude::*, query::QueryFilter};
 /// # bevy_ecs::system::assert_is_system(fruits);
 /// ```
 pub trait Kind: 'static + Send + Sized + Sync {
+    /// The [`QueryFilter`] which defines this kind.
     type Filter: QueryFilter;
 
     /// Returns the debug name of this kind.
@@ -74,13 +77,13 @@ impl Kind for Any {
 
 /// A trait which allows safe casting from one [`Kind`] to another.
 ///
-/// # Usage
-/// Prefer to use the [`kind`] macro to implement this trait.
-pub trait CastInto<T: Kind>: Kind {
+/// Do not implement this trait directly; instead, use the [`kind`] macro.
+pub unsafe trait CastInto<T: Kind>: Kind {
+    /// Casts the given [`Instance`] of `Self` into an instance of `T`.
     fn cast_into(instance: Instance<Self>) -> Instance<T>;
 }
 
-impl<T: Kind> CastInto<T> for T {
+unsafe impl<T: Kind> CastInto<T> for T {
     fn cast_into(instance: Instance<Self>) -> Instance<Self> {
         instance
     }
@@ -120,7 +123,7 @@ impl<T: Kind> CastInto<T> for T {
 #[macro_export]
 macro_rules! kind {
     ($T:ident is $U:ty) => {
-        impl $crate::CastInto<$U> for $T {
+        unsafe impl $crate::CastInto<$U> for $T {
             fn cast_into(instance: $crate::Instance<Self>) -> $crate::Instance<$U> {
                 // SAFE: Because we said so!
                 unsafe { instance.cast_into_unchecked() }

@@ -767,6 +767,7 @@ impl<T: Component> ContainsInstance<T> for InstanceMut<'_, T> {
     }
 }
 
+/// Similar to [`EntityWorldMut`], but with kind semantics.
 pub struct InstanceWorldMut<'w, T: Kind>(EntityWorldMut<'w>, PhantomData<T>);
 
 impl<'w, T: Kind> InstanceWorldMut<'w, T> {
@@ -871,6 +872,7 @@ impl<'a, T: Kind> InstanceCommands<'a, T> {
         Self(entity, PhantomData)
     }
 
+    /// Creates a new [`InstanceCommands<T>`] from [`EntityRef`] if it contains a [`Component`] of type `T`.
     pub fn from_entity(entity: EntityRef, commands: &'a mut Commands) -> Option<Self>
     where
         T: Component,
@@ -893,20 +895,28 @@ impl<'a, T: Kind> InstanceCommands<'a, T> {
         &mut self.0
     }
 
+    /// Equivalent to [`EntityCommands::insert`], but it returns `self` to maintain kind semantics.
     pub fn insert(&mut self, bundle: impl Bundle) -> &mut Self {
         self.0.insert(bundle);
         self
     }
 
+    /// Equivalent to [`EntityCommands::insert`], but it returns `self` to maintain kind semantics.
     pub fn remove<U: Component>(&mut self) -> &mut Self {
         self.0.remove::<U>();
         self
     }
 
+    /// Returns an [`InstanceCommands`] with a smaller lifetime.
+    ///
+    /// This is useful if you have `&mut InstanceCommands` but you need `InstanceCommands`.
     pub fn reborrow(&mut self) -> InstanceCommands<'_, T> {
         InstanceCommands(self.0.reborrow(), PhantomData)
     }
 
+    /// Converts this [`InstanceCommands<T>`] into an [`InstanceCommands<U>`], given that `T` implements [`CastInto<U>`].
+    ///
+    /// See [`CastInto`] and [`kind`][crate::kind]  macro for more information on casting.
     pub fn cast_into<U: Kind>(self) -> InstanceCommands<'a, U>
     where
         T: CastInto<U>,

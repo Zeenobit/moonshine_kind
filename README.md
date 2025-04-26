@@ -50,7 +50,7 @@ struct FruitBasket {
 
 ### [`Kind`] and [`Instance<T>`]
 
-By definition, an [`Entity`] is of [`Kind`] `T` if it matches [`Query<(), <T as Kind>::Filter>`][`Query`].
+By definition, an [`Entity`] is of kind `T` if it matches [`Query<(), <T as Kind>::Filter>`][`Query`].
 
 Any [`Component`] automatically implements the [`Kind`] trait:
 
@@ -60,7 +60,9 @@ impl<T: Component> Kind for T {
 }
 ```
 
-This means you may use any [`Component`] as an argument to [`Instance<T>`]:
+An [`Instance<T>`] represents `Entity` of kind `T`. It is designed to behave exactly like an `Entity` with some added benefits.
+
+This means you may use any component as an argument to `Instance`:
 
 ```rust
 use bevy::prelude::*;
@@ -74,7 +76,7 @@ fn count_apples(apples: Query<Instance<Apple>>) {
 }
 ```
 
-Alternatively, you may also define your own kind by implementing the [`Kind`] trait:
+Alternatively, you may also define your own kind by implementing the `Kind` trait:
 
 ```rust
 use bevy::prelude::*;
@@ -99,7 +101,7 @@ fn count_fruits(fruits: Query<Instance<Fruit>>) {
 
 ### [`InstanceRef<T>`] and [`InstanceMut<T>`]
 
-If a [`Kind`] is also a [`Component`], you may use [`InstanceRef<T>`] and [`InstanceMut<T>`] to access [`Instance<T>`] and the associated component data with a single query term:
+If a [`Kind`] is also a [`Component`], you may use [`InstanceRef<T>`] and [`InstanceMut<T>`] to access the [`Instance<T>`] and the associated component data with a single query term:
 
 ```rust
 use bevy::prelude::*;
@@ -133,9 +135,7 @@ In other words, `InstanceRef<T>` is analogous to `(Instance<T>, &T)` and `Instan
 
 ### [`InstanceCommands<T>`]
 
-You may also extend [`InstanceCommands<T>`] to define [`Commands`] specific to a [`Kind`].
-
-[`InstanceCommands<T>`] behaves like [`EntityCommands`], and is accessible via `commands.instance(...)` (see [`GetInstanceCommands<T>`] for details):
+You may also extend [`InstanceCommands<T>`] to define [`Commands`] specific to a [`Kind`]:
 
 ```rust
 use bevy::prelude::*;
@@ -172,6 +172,8 @@ fn eat(
 }
 ```
 
+`InstanceCommands<T>` behaves like [`EntityCommands`], and is accessible via [`commands.instance(...)`][`GetInstanceCommands<T>`].
+
 ### [`Instance<Any>`][`Instance<T>`]
 
 When writing generic code, it may be desirable to have an instance that can be of [`Any`] kind:
@@ -182,7 +184,7 @@ struct Container<T: Kind = Any> {
     items: Vec<Instance<T>>
 }
 ```
-[`Instance<Any>`][`Instance<T>`] is functionally equivalent to [`Entity`].
+`Instance<Any>` is functionally and semantically identical to a regular [`Entity`].
 
 ### [`CastInto`]
 
