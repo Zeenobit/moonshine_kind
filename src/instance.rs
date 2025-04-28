@@ -887,7 +887,7 @@ impl<'a, T: Kind> InstanceCommands<'a, T> {
     /// Returns the associated [`Instance<T>`].
     pub fn instance(&self) -> Instance<T> {
         // SAFE: `self.entity()` must be a valid instance of kind `T`.
-        unsafe { Instance::from_entity_unchecked(self.entity()) }
+        unsafe { Instance::from_entity_unchecked(self.id()) }
     }
 
     /// Returns the associated [`EntityCommands`].
