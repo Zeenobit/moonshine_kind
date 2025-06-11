@@ -8,6 +8,7 @@ use std::{
 
 use bevy_ecs::change_detection::MaybeLocation;
 use bevy_ecs::component::Mutable;
+use bevy_ecs::observer::TriggerTargets;
 use bevy_ecs::relationship::RelationshipSourceCollection;
 use bevy_ecs::{
     archetype::Archetype,
@@ -143,6 +144,13 @@ impl<T: Kind> Instance<T> {
     /// Assumes this instance is also a valid `Instance<U>`.
     pub unsafe fn cast_into_unchecked<U: Kind>(self) -> Instance<U> {
         Instance::from_entity_unchecked(self.entity())
+    }
+
+    pub fn as_trigger_target(&self, world: &World) -> (Entity, ComponentId)
+    where
+        T: Component,
+    {
+        (self.entity(), world.component_id::<T>().unwrap())
     }
 }
 
