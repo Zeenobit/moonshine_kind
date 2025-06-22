@@ -915,6 +915,11 @@ impl<'a, T: Kind> InstanceCommands<'a, T> {
         self
     }
 
+    pub fn try_remove<U: Component>(&mut self) -> &mut Self {
+        self.0.try_remove::<U>();
+        self
+    }
+
     /// Returns an [`InstanceCommands`] with a smaller lifetime.
     ///
     /// This is useful if you have `&mut InstanceCommands` but you need `InstanceCommands`.
