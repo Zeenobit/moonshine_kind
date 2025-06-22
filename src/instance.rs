@@ -22,7 +22,7 @@ use bevy_ecs::{
 };
 use bevy_reflect::Reflect;
 
-use crate::{Any, CastInto, Kind};
+use crate::{Any, Kind, KindOf};
 
 /// Represents an [`Entity`] of [`Kind`] `T`.
 ///
@@ -117,9 +117,9 @@ impl<T: Kind> Instance<T> {
     /// See [`kind`] macro for usage examples.
     pub fn cast_into<U: Kind>(self) -> Instance<U>
     where
-        T: CastInto<U>,
+        T: KindOf<U>,
     {
-        T::cast_into(self)
+        unsafe { T::cast(self) }
     }
 
     /// Converts this instance into an instance of [`Kind`] [`Any`].
@@ -932,7 +932,7 @@ impl<'a, T: Kind> InstanceCommands<'a, T> {
     /// See [`CastInto`] and [`kind`][crate::kind]  macro for more information on casting.
     pub fn cast_into<U: Kind>(self) -> InstanceCommands<'a, U>
     where
-        T: CastInto<U>,
+        T: KindOf<U>,
     {
         // SAFE: `CastInto<U>` is implemented for `T`.
         unsafe { InstanceCommands::from_entity_unchecked(self.0) }

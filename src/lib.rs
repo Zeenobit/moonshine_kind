@@ -3,12 +3,15 @@
 
 /// Prelude module to import all necessary traits and types for [`Kind`] semantics.
 pub mod prelude {
-    pub use crate::{kind, Kind};
     pub use crate::{
         ComponentInstance, InsertInstance, InsertInstanceWorld, SpawnInstance, SpawnInstanceWorld,
     };
     pub use crate::{ContainsInstance, Instance, InstanceMut, InstanceRef};
     pub use crate::{GetInstanceCommands, InstanceCommands};
+    pub use crate::{Kind, KindOf};
+
+    #[allow(deprecated)] // TODO: Remove
+    pub use crate::kind;
 }
 
 mod instance;
@@ -76,16 +79,18 @@ impl Kind for Any {
 }
 
 /// A trait which allows safe casting from one [`Kind`] to another.
-///
-/// Do not implement this trait directly; instead, use the [`kind`] macro.
-pub unsafe trait CastInto<T: Kind>: Kind {
-    /// Casts the given [`Instance`] of `Self` into an instance of `T`.
-    fn cast_into(instance: Instance<Self>) -> Instance<T>;
+pub trait KindOf<Base: Kind>: Kind {
+    #[doc(hidden)]
+    unsafe fn cast(instance: Instance<Self>) -> Instance<Base> {
+        // SAFE: Because we said so.
+        // TODO: Can we use required components to enforce this?
+        Instance::from_entity_unchecked(instance.entity())
+    }
 }
 
-unsafe impl<T: Kind> CastInto<T> for T {
-    fn cast_into(instance: Instance<Self>) -> Instance<Self> {
-        instance
+impl<T: Kind> KindOf<T> for T {
+    unsafe fn cast(instance: Instance<Self>) -> Instance<T> {
+        Instance::from_entity_unchecked(instance.entity())
     }
 }
 
@@ -120,15 +125,11 @@ unsafe impl<T: Kind> CastInto<T> for T {
 ///    println!("Yum!");
 /// }
 /// ```
+#[deprecated(since = "0.2.3", note = "implement `KindOf<T>` instead")]
 #[macro_export]
 macro_rules! kind {
     ($T:ident is $U:ty) => {
-        unsafe impl $crate::CastInto<$U> for $T {
-            fn cast_into(instance: $crate::Instance<Self>) -> $crate::Instance<$U> {
-                // SAFE: Because we said so!
-                unsafe { instance.cast_into_unchecked() }
-            }
-        }
+        impl $crate::KindOf<$U> for $T {}
     };
 }
 
@@ -290,13 +291,14 @@ mod tests {
         #[derive(Component)]
         struct Bar;
 
-        kind!(Foo is Bar);
+        impl KindOf<Bar> for Foo {}
 
         let any = Instance::<Any>::PLACEHOLDER;
         let foo = Instance::<Foo>::PLACEHOLDER;
         let bar = foo.cast_into::<Bar>();
         assert!(foo.cast_into_any() == any);
         assert!(bar.cast_into_any() == any);
+        // assert!(foo.cast_into() == any); // TODO: Can we make this compile?
         // assert!(any.cast_into::<Foo>() == foo); // <-- Must not compile!
         // assert!(bar.cast_into::<Foo>() == foo); // <-- Must not compile!
         assert!(bar.entity() == foo.entity());

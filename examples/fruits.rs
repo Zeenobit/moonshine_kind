@@ -18,8 +18,8 @@ impl Kind for Fruit {
 
 // Define safe casts between related kinds explicitly.
 // You only need to define these if you intend to cast between these kinds.
-kind!(Apple is Fruit);
-kind!(Orange is Fruit);
+impl KindOf<Fruit> for Apple {}
+impl KindOf<Fruit> for Orange {}
 
 // Represents a Human. Humans can eat Fruits.
 #[derive(Component)]
@@ -87,7 +87,7 @@ fn human_eat(
 ) {
     for (human, Eat(fruit)) in human.iter() {
         if let Ok(apple) = apple.get(fruit.entity()) {
-            // Because of `kind!(Apple is Fruit);`, all apples can be cast into fruits:
+            // Because `Apple` is a `KindOf<Fruit>`, all apples can be safely cast into fruits:
             human_likes_fruit(human, apple.cast_into());
 
             println!("{human:?} ate a crunchy {apple:?}.");
