@@ -3,12 +3,12 @@
 
 /// Prelude module to import all necessary traits and types for [`Kind`] semantics.
 pub mod prelude {
+    pub use crate::{CastInto, Kind};
     pub use crate::{
         ComponentInstance, InsertInstance, InsertInstanceWorld, SpawnInstance, SpawnInstanceWorld,
     };
     pub use crate::{ContainsInstance, Instance, InstanceMut, InstanceRef};
     pub use crate::{GetInstanceCommands, InstanceCommands};
-    pub use crate::{Kind, KindOf};
 
     #[allow(deprecated)] // TODO: Remove
     pub use crate::kind;
@@ -79,7 +79,7 @@ impl Kind for Any {
 }
 
 /// A trait which allows safe casting from one [`Kind`] to another.
-pub trait KindOf<Base: Kind>: Kind {
+pub trait CastInto<Base: Kind>: Kind {
     #[doc(hidden)]
     unsafe fn cast(instance: Instance<Self>) -> Instance<Base> {
         // SAFE: Because we said so.
@@ -88,7 +88,7 @@ pub trait KindOf<Base: Kind>: Kind {
     }
 }
 
-impl<T: Kind> KindOf<T> for T {
+impl<T: Kind> CastInto<T> for T {
     unsafe fn cast(instance: Instance<Self>) -> Instance<T> {
         Instance::from_entity_unchecked(instance.entity())
     }
@@ -291,7 +291,7 @@ mod tests {
         #[derive(Component)]
         struct Bar;
 
-        impl KindOf<Bar> for Foo {}
+        impl CastInto<Bar> for Foo {}
 
         let any = Instance::<Any>::PLACEHOLDER;
         let foo = Instance::<Foo>::PLACEHOLDER;

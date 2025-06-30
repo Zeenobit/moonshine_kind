@@ -18,8 +18,8 @@ impl Kind for Fruit {
 
 // Define safe casts between related kinds explicitly.
 // You only need to define these if you intend to cast between these kinds.
-impl KindOf<Fruit> for Apple {}
-impl KindOf<Fruit> for Orange {}
+impl CastInto<Fruit> for Apple {}
+impl CastInto<Fruit> for Orange {}
 
 // Represents a Human. Humans can eat Fruits.
 #[derive(Component)]
