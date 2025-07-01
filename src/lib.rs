@@ -79,9 +79,9 @@ impl Kind for Any {
 }
 
 /// A trait which allows safe casting from one [`Kind`] to another.
-pub trait CastInto<Base: Kind>: Kind {
+pub trait CastInto<T: Kind>: Kind {
     #[doc(hidden)]
-    unsafe fn cast(instance: Instance<Self>) -> Instance<Base> {
+    unsafe fn cast(instance: Instance<Self>) -> Instance<T> {
         // SAFE: Because we said so.
         // TODO: Can we use required components to enforce this?
         Instance::from_entity_unchecked(instance.entity())
