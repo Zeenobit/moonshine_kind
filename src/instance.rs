@@ -22,7 +22,7 @@ use bevy_ecs::{
 };
 use bevy_reflect::Reflect;
 
-use crate::{Any, Kind, CastInto};
+use crate::{Any, CastInto, Kind};
 
 /// Represents an [`Entity`] of [`Kind`] `T`.
 ///
@@ -146,11 +146,15 @@ impl<T: Kind> Instance<T> {
         Instance::from_entity_unchecked(self.entity())
     }
 
-    pub fn as_trigger_target(&self, world: &World) -> (Entity, ComponentId)
+    /// Returns this [`Instance<T>`] as a [`TriggerTarget`](TriggerTargets) pointing to the
+    /// associated [`Entity`] and its [`Component`] of type `T`.
+    pub fn as_trigger_target(&self, components: &Components) -> Option<impl TriggerTargets>
     where
         T: Component,
     {
-        (self.entity(), world.component_id::<T>().unwrap())
+        components
+            .valid_component_id::<T>()
+            .map(|id| (self.entity(), id))
     }
 }
 
@@ -915,6 +919,7 @@ impl<'a, T: Kind> InstanceCommands<'a, T> {
         self
     }
 
+    /// Equivalent to [`EntityCommands::try_insert`], but it returns `self` to maintain kind semantics.
     pub fn try_remove<U: Component>(&mut self) -> &mut Self {
         self.0.try_remove::<U>();
         self
