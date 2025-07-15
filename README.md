@@ -206,7 +206,7 @@ impl Kind for Fruit {
 }
 
 // An Apple is a Fruit because we said so:
-kind!(Apple is Fruit);
+impl CastInto<Fruit> for Apple {}
 
 fn init_apple(apple: Instance<Apple>, commands: &mut Commands) {
     init_fruit(apple.cast_into(), commands);
@@ -231,7 +231,7 @@ struct Apple;
 #[require(Apple)] // Require all GrannySmith instances to also have Apple
 struct GrannySmith;
 
-kind!(GrannySmith is Apple); // GrannySmith is an Apple; Guaranteed!
+impl CastInto<Apple> for GrannySmith {} // GrannySmith is an Apple; Guaranteed!
 ```
 
 ## Examples

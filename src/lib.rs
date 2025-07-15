@@ -113,7 +113,7 @@ impl<T: Kind> CastInto<T> for T {
 /// struct Apple;
 ///
 /// // We can guarantee all entities with an `Apple` component are of kind `Fruit`:
-/// kind!(Apple is Fruit);
+/// impl CastInto<Fruit> for Apple {}
 ///
 /// fn eat_apple(apple: Instance<Apple>) {
 ///    println!("Crunch!");
