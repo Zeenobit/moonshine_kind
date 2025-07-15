@@ -46,6 +46,8 @@ struct FruitBasket {
 - No runtime overhead
 - Zero boilerplate
 
+**This crate may be used separately, but is also included as part of [🍸 Moonshine Core](https://github.com/Zeenobit/moonshine_core).**
+
 ## Usage
 
 ### [`Kind`] and [`Instance<T>`]
@@ -272,16 +274,14 @@ fn prune_fruits(
 }
 ```
 
-## Installation
+## Changes
 
-Add the following to your `Cargo.toml`:
+### Version 0.3
 
-```toml
-[dependencies]
-moonshine-kind = "0.2.2"
-```
-
-This crate is also included as part of [🍸 Moonshine Core](https://github.com/Zeenobit/moonshine_core).
+- Deprecated `kind!` macro in favor of manual implementation of [`CastInto`].
+    - This allows for more flexibility when dealing with generic kinds.
+- Added `Instance<T>::as_trigger_target()`
+    - This allows an instance to be used as a trigger target if `T` is a [`Component`].
 
 ## Support
 
