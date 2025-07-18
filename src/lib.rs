@@ -9,9 +9,6 @@ pub mod prelude {
     };
     pub use crate::{ContainsInstance, Instance, InstanceMut, InstanceRef};
     pub use crate::{GetInstanceCommands, InstanceCommands};
-
-    #[allow(deprecated)] // TODO: Remove
-    pub use crate::kind;
 }
 
 mod instance;
@@ -92,45 +89,6 @@ impl<T: Kind> CastInto<T> for T {
     unsafe fn cast(instance: Instance<Self>) -> Instance<T> {
         Instance::from_entity_unchecked(instance.entity())
     }
-}
-
-/// A macro to safely implement [`CastInto`] for a pair of related [`Kind`]s.
-///
-/// See [`CastInto`] for more information.
-///
-/// # Usage
-/// ```
-/// # use bevy::prelude::*;
-/// # use moonshine_kind::prelude::*;
-///
-/// struct Fruit;
-///
-/// impl Kind for Fruit {
-///    type Filter = With<Apple>;
-/// }
-///
-/// #[derive(Component)]
-/// struct Apple;
-///
-/// // We can guarantee all entities with an `Apple` component are of kind `Fruit`:
-/// impl CastInto<Fruit> for Apple {}
-///
-/// fn eat_apple(apple: Instance<Apple>) {
-///    println!("Crunch!");
-///    // SAFE: Because we said so.
-///    eat_fruit(apple.cast_into());
-/// }
-///
-/// fn eat_fruit(fruit: Instance<Fruit>) {
-///    println!("Yum!");
-/// }
-/// ```
-#[deprecated(since = "0.2.3", note = "implement `KindOf<T>` instead")]
-#[macro_export]
-macro_rules! kind {
-    ($T:ident is $U:ty) => {
-        impl $crate::KindOf<$U> for $T {}
-    };
 }
 
 /// Extension trait used to spawn instances via [`Commands`].
