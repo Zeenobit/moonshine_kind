@@ -113,8 +113,6 @@ impl<T: Kind> Instance<T> {
     ///
     /// # Usage
     /// A kind `T` is safety convertible to another kind `U` if `T` implements [`CastInto<U>`].
-    ///
-    /// See [`kind`] macro for usage examples.
     pub fn cast_into<U: Kind>(self) -> Instance<U>
     where
         T: CastInto<U>,
