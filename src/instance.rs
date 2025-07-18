@@ -138,7 +138,7 @@ impl<T: Kind> Instance<T> {
     /// This function is useful when you **know** an `Instance<T>` is convertible to a specific type and you
     /// need an `Instance<U>` with no way to validate it.
     ///
-    /// Always prefer to explicitly declare safe casts using [`kind`] macro and use [`Instance::cast_into`] instead of this.
+    /// Always prefer to explicitly declare safe casts with the [`CastInto`] trait and use [`Instance::cast_into`].
     ///
     /// # Safety
     /// Assumes this instance is also a valid `Instance<U>`.
