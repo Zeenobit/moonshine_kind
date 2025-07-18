@@ -973,3 +973,28 @@ impl<T: Kind> ContainsInstance<T> for InstanceCommands<'_, T> {
         self.instance()
     }
 }
+
+/// Trait used to trigger an [`Instance<T>`] with an [`Event`].
+pub trait TriggerInstance {
+    /// Triggers an [`Event`] on the given [`Instance<T>`].
+    ///
+    /// You can use [`Trigger<E, T>`] to handle an event `E` on an [`Instance<T>`].
+    fn trigger_instance<T: Component>(self, event: impl Event, instance: Instance<T>) -> Self;
+}
+
+impl TriggerInstance for &mut Commands<'_, '_> {
+    fn trigger_instance<T: Component>(self, event: impl Event, instance: Instance<T>) -> Self {
+        self.queue(move |world: &mut World| {
+            world.trigger_instance(event, instance);
+        });
+        self
+    }
+}
+
+impl TriggerInstance for &mut World {
+    fn trigger_instance<T: Component>(self, event: impl Event, instance: Instance<T>) -> Self {
+        let id = self.component_id::<T>().unwrap();
+        self.trigger_targets(event, (instance.entity(), id));
+        self
+    }
+}
