@@ -931,8 +931,6 @@ impl<'a, T: Kind> InstanceCommands<'a, T> {
     }
 
     /// Converts this [`InstanceCommands<T>`] into an [`InstanceCommands<U>`], given that `T` implements [`CastInto<U>`].
-    ///
-    /// See [`CastInto`] and [`kind`][crate::kind]  macro for more information on casting.
     pub fn cast_into<U: Kind>(self) -> InstanceCommands<'a, U>
     where
         T: CastInto<U>,
