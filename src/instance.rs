@@ -996,3 +996,17 @@ impl TriggerInstance for &mut World {
         self
     }
 }
+
+/// Trait used to access the a [`Trigger<E, T>::target`] as an [`Instance<T>`] if `T` is a [`Component`].
+pub trait GetTriggerTargetInstance<T: Kind> {
+    /// Returns the [`Instance<T>`] that was targeted by the [`Event`] that triggered this observer. It may
+    /// be [`Instance::PLACEHOLDER`].
+    fn target_instance(&self) -> Instance<T>;
+}
+
+impl<E: Event, T: Component> GetTriggerTargetInstance<T> for Trigger<'_, E, T> {
+    fn target_instance(&self) -> Instance<T> {
+        // SAFE: `Trigger` ensures target is an instance of kind `T`.
+        unsafe { Instance::from_entity_unchecked(self.target()) }
+    }
+}

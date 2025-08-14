@@ -8,7 +8,8 @@ pub mod prelude {
         ComponentInstance, InsertInstance, InsertInstanceWorld, SpawnInstance, SpawnInstanceWorld,
     };
     pub use crate::{ContainsInstance, Instance, InstanceMut, InstanceRef};
-    pub use crate::{GetInstanceCommands, InstanceCommands, TriggerInstance};
+    pub use crate::{GetInstanceCommands, InstanceCommands};
+    pub use crate::{GetTriggerTargetInstance, TriggerInstance};
 }
 
 mod instance;
