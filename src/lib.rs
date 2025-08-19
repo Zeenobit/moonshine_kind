@@ -5,8 +5,7 @@
 pub mod prelude {
     pub use crate::{CastInto, Kind};
     pub use crate::{
-        ComponentInstance, GetInstanceRef, InsertInstance, InsertInstanceWorld, SpawnInstance,
-        SpawnInstanceWorld,
+        ComponentInstance, InsertInstance, InsertInstanceWorld, SpawnInstance, SpawnInstanceWorld,
     };
     pub use crate::{ContainsInstance, Instance, InstanceMut, InstanceRef};
     pub use crate::{GetInstanceCommands, InstanceCommands};
@@ -170,10 +169,10 @@ impl InsertInstanceWorld for EntityWorldMut<'_> {
 /// Extension trait used to get [`Component`] data from an [`Instance<T>`] via [`World`].
 pub trait ComponentInstance {
     /// Returns a reference to the given instance.
-    fn instance<T: Component>(&self, instance: Instance<T>) -> Option<&T>;
+    fn instance<T: Component>(&self, instance: Instance<T>) -> Option<InstanceRef<T>>;
 
     /// Returns a reference to the given instance, if it is of [`Kind`] `T`.
-    fn get_instance<T: Component>(&self, entity: Entity) -> Option<&T> {
+    fn get_instance<T: Component>(&self, entity: Entity) -> Option<InstanceRef<T>> {
         // SAFE: Inner function will ensure entity is a valid instance of kind `T`
         self.instance(unsafe { Instance::from_entity_unchecked(entity) })
     }
@@ -184,53 +183,9 @@ pub trait ComponentInstance {
     fn instance_mut<T: Component<Mutability = Mutable>>(
         &mut self,
         instance: Instance<T>,
-    ) -> Option<Mut<T>>;
-
-    /// Returns a mutable reference to the given instance, if it is of [`Kind`] `T`.
-    ///
-    /// This requires `T` to be [`Mutable`].
-    fn get_instance_mut<T: Component<Mutability = Mutable>>(
-        &mut self,
-        entity: Entity,
-    ) -> Option<Mut<T>> {
-        // SAFE: Inner function will ensure entity is a valid instance of kind `T`
-        self.instance_mut(unsafe { Instance::from_entity_unchecked(entity) })
-    }
-}
-
-impl ComponentInstance for World {
-    fn instance<T: Component>(&self, instance: Instance<T>) -> Option<&T> {
-        self.get::<T>(instance.entity())
-    }
-
-    fn instance_mut<T: Component<Mutability = Mutable>>(
-        &mut self,
-        instance: Instance<T>,
-    ) -> Option<Mut<T>> {
-        self.get_mut::<T>(instance.entity())
-    }
-}
-
-/// Extension trait used to get an [`InstanceRef`] or [`InstanceWorldMut`] from a [`World`].
-pub trait GetInstanceRef {
-    /// Returns an [`InstanceRef`] to the given instance.
-    fn instance_ref<T: Component>(&self, instance: Instance<T>) -> Option<InstanceRef<T>>;
-
-    /// Returns an [`InstanceRef`] to the given instance, if it is of [`Kind`] `T`.
-    fn get_instance_ref<T: Component>(&self, entity: Entity) -> Option<InstanceRef<T>> {
-        // SAFE: Inner function will ensure entity is a valid instance of kind `T`
-        self.instance_ref(unsafe { Instance::from_entity_unchecked(entity) })
-    }
-
-    /// Returns an [`InstanceWorldMut`] to the given instance.
-    ///
-    /// This requires `T` to be [`Mutable`].
-    fn instance_mut<T: Component<Mutability = Mutable>>(
-        &mut self,
-        instance: Instance<T>,
     ) -> Option<InstanceWorldMut<T>>;
 
-    /// Returns an [`InstanceWorldMut`] to the given instance, if it is of [`Kind`] `T`.
+    /// Returns a mutable reference to the given instance, if it is of [`Kind`] `T`.
     ///
     /// This requires `T` to be [`Mutable`].
     fn get_instance_mut<T: Component<Mutability = Mutable>>(
@@ -242,8 +197,8 @@ pub trait GetInstanceRef {
     }
 }
 
-impl GetInstanceRef for World {
-    fn instance_ref<T: Component>(&self, instance: Instance<T>) -> Option<InstanceRef<T>> {
+impl ComponentInstance for World {
+    fn instance<T: Component>(&self, instance: Instance<T>) -> Option<InstanceRef<T>> {
         InstanceRef::from_entity(self.entity(instance.entity()))
     }
 
