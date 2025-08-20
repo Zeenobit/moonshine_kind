@@ -513,6 +513,17 @@ impl<'a, T: Component> InstanceRef<'a, T> {
             entity.get()?,
         ))
     }
+
+    /// Creates a new [`InstanceRef<T>`] from [`EntityRef`] without any validation.
+    ///
+    /// # Safety
+    /// Assumes `entity` is a valid instance of kind `T`.
+    pub unsafe fn from_entity_unchecked(entity: EntityRef<'a>) -> Self {
+        Self(
+            Instance::from_entity_unchecked(entity.id()),
+            entity.get().unwrap(),
+        )
+    }
 }
 
 impl<T: Component> Clone for InstanceRef<'_, T> {
@@ -657,19 +668,26 @@ unsafe impl<'b, T: Component<Mutability = Mutable>> QueryData for InstanceMut<'b
     }
 }
 
-impl<'a, T: Component> InstanceMut<'a, T> {
+impl<'a, T: Component<Mutability = Mutable>> InstanceMut<'a, T> {
     /// Creates a new [`InstanceMut<T>`] from an [`EntityWorldMut`] if it contains a given [`Component`] of type `T`.
-    pub fn from_entity(entity: &'a mut EntityWorldMut) -> Option<Self>
-    where
-        T: Component<Mutability = Mutable>,
-    {
+    pub fn from_entity(entity: EntityMut<'a>) -> Option<Self> {
         let id = entity.id();
-        let data = entity.get_mut::<T>()?;
+        let data = entity.into_mut()?;
         Some(Self(
             // SAFE: Kind is validated by `entity.get_mut()` above.
             unsafe { Instance::from_entity_unchecked(id) },
             data,
         ))
+    }
+
+    /// Creates a new [`InstanceMut<T>`] from an [`EntityMut`] without any validation.
+    ///
+    /// # Safety
+    /// Assumes `entity` is a valid instance of kind `T`.
+    pub unsafe fn from_entity_unchecked(entity: EntityMut<'a>) -> Self {
+        let id = entity.id();
+        let data = entity.into_mut().unwrap();
+        Self(Instance::from_entity_unchecked(id), data)
     }
 }
 
@@ -774,51 +792,6 @@ impl<T: Component> DetectChangesMut for InstanceMut<'_, T> {
 impl<T: Component> ContainsInstance<T> for InstanceMut<'_, T> {
     fn instance(&self) -> Instance<T> {
         self.0
-    }
-}
-
-/// Similar to [`EntityWorldMut`], but with kind semantics.
-pub struct InstanceWorldMut<'w, T: Kind>(EntityWorldMut<'w>, PhantomData<T>);
-
-impl<'w, T: Kind> InstanceWorldMut<'w, T> {
-    /// Creates a new [`InstanceWorldMut<T>`] from [`EntityWorldMut`] without any validation.
-    ///
-    /// # Safety
-    /// Assumes `entity` is a valid instance of kind `T`.
-    pub unsafe fn from_entity_unchecked(entity: EntityWorldMut<'w>) -> Self {
-        Self(entity, PhantomData)
-    }
-}
-
-impl<'w, T: Component> InstanceWorldMut<'w, T> {
-    /// Creates a new [`InstanceWorldMut<T>`] from [`EntityWorldMut`] if it contains a [`Component`] of type `T`.
-    pub fn from_entity(entity: EntityWorldMut<'w>) -> Option<Self> {
-        if entity.contains::<T>() {
-            Some(Self(entity, PhantomData))
-        } else {
-            None
-        }
-    }
-}
-
-impl<T: Kind> ContainsInstance<T> for InstanceWorldMut<'_, T> {
-    fn instance(&self) -> Instance<T> {
-        // SAFE: `self.entity()` must be a valid instance of kind `T`.
-        unsafe { Instance::from_entity_unchecked(self.0.id()) }
-    }
-}
-
-impl<'w, T: Kind> Deref for InstanceWorldMut<'w, T> {
-    type Target = EntityWorldMut<'w>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl<'w, T: Kind> DerefMut for InstanceWorldMut<'w, T> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
     }
 }
 
