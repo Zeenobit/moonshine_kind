@@ -15,6 +15,7 @@ pub mod prelude {
 mod instance;
 
 use bevy_ecs::world::DeferredWorld;
+use bevy_reflect::TypePath;
 pub use instance::*;
 
 use bevy_ecs::component::Mutable;
@@ -71,6 +72,7 @@ impl<T: Component> Kind for T {
 /// Represents the kind of any [`Entity`].
 ///
 /// See [`Instance<Any>`] for more information on usage.
+#[derive(TypePath)]
 pub struct Any;
 
 impl Kind for Any {
