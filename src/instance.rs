@@ -1,3 +1,4 @@
+use std::borrow::Borrow;
 use std::{
     cmp::Ordering,
     fmt,
@@ -236,6 +237,12 @@ impl<T: Kind> Deref for Instance<T> {
     type Target = Entity;
 
     fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<T: Kind> Borrow<Entity> for Instance<T> {
+    fn borrow(&self) -> &Entity {
         &self.0
     }
 }
