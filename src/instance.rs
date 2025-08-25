@@ -201,8 +201,8 @@ impl<T: Kind> Hash for Instance<T> {
     }
 }
 
-impl<T: Kind> PartialEq for Instance<T> {
-    fn eq(&self, other: &Self) -> bool {
+impl<T: Kind, U: Kind> PartialEq<Instance<U>> for Instance<T> {
+    fn eq(&self, other: &Instance<U>) -> bool {
         self.0 == other.0
     }
 }
