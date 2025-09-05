@@ -380,6 +380,12 @@ impl From<Entity> for Instance<Any> {
     }
 }
 
+impl<T: Kind> ContainsEntity for Instance<T> {
+    fn entity(&self) -> Entity {
+        self.entity()
+    }
+}
+
 /// Similar to [`ContainsEntity`], but for [`Instance<T>`].
 pub trait ContainsInstance<T: Kind> {
     /// Returns the associated [`Instance<T>`].
