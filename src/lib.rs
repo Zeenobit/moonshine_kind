@@ -186,8 +186,12 @@ impl InsertInstanceWorld for EntityWorldMut<'_> {
 /// Extension trait used to get [`Component`] data from an [`Instance<T>`] via [`World`].
 pub trait ComponentInstance {
     /// Returns a reference to the given instance.
-    fn instance<T: Component>(&'_ self, instance: Instance<T>) -> Option<InstanceRef<'_, T>> {
-        self.get_instance(instance.entity())
+    ///
+    /// # Panics
+    ///
+    /// If the given `instance` is not a valid entity of kind `T`.
+    fn instance<T: Component>(&'_ self, instance: Instance<T>) -> InstanceRef<'_, T> {
+        self.get_instance(instance.entity()).unwrap()
     }
 
     /// Returns a reference to the given instance, if it is of [`Kind`] `T`.
@@ -196,11 +200,15 @@ pub trait ComponentInstance {
     /// Returns a mutable reference to the given instance.
     ///
     /// This requires `T` to be [`Mutable`].
+    ///
+    /// # Panics
+    ///
+    /// If the given `instance` is not a valid entity of kind `T`.
     fn instance_mut<T: Component<Mutability = Mutable>>(
         &'_ mut self,
         instance: Instance<T>,
-    ) -> Option<InstanceMut<'_, T>> {
-        self.get_instance_mut(instance.entity())
+    ) -> InstanceMut<'_, T> {
+        self.get_instance_mut(instance.entity()).unwrap()
     }
 
     /// Returns a mutable reference to the given instance, if it is of [`Kind`] `T`.
