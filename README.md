@@ -274,15 +274,6 @@ fn prune_fruits(
 }
 ```
 
-## Changes
-
-### Version 0.3
-
-- Deprecated `kind!` macro in favor of manual implementation of [`CastInto`].
-    - This allows for more flexibility when dealing with generic kinds.
-- Added `Instance<T>::as_trigger_target()`
-    - This allows an instance to be used as a trigger target if `T` is a [`Component`].
-
 ## Support
 
 Please [post an issue](https://github.com/Zeenobit/moonshine_kind/issues/new) for any bugs, questions, or suggestions.
