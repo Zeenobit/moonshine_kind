@@ -9,7 +9,6 @@ use std::{
 
 use bevy_ecs::change_detection::MaybeLocation;
 use bevy_ecs::component::Mutable;
-use bevy_ecs::observer::TriggerTargets;
 use bevy_ecs::relationship::RelationshipSourceCollection;
 use bevy_ecs::{
     archetype::Archetype,
@@ -145,15 +144,12 @@ impl<T: Kind> Instance<T> {
         Instance::from_entity_unchecked(self.entity())
     }
 
-    /// Returns this [`Instance<T>`] as a [`TriggerTarget`](TriggerTargets) pointing to the
-    /// associated [`Entity`] and its [`Component`] of type `T`.
-    pub fn as_trigger_target(&self, components: &Components) -> Option<impl TriggerTargets>
-    where
-        T: Component,
-    {
-        components
-            .valid_component_id::<T>()
-            .map(|id| (self.entity(), id))
+    /// Returns a mutable reference to the internal [`Entity`] of this [`Instance`].
+    ///
+    /// # Safety
+    /// You are responsible to ensure the entity is still a valid instance of [`Kind`] `T`.
+    pub unsafe fn as_entity_mut(&mut self) -> &mut Entity {
+        &mut self.0
     }
 }
 
@@ -280,7 +276,7 @@ unsafe impl<T: Kind> WorldQuery for Instance<T> {
         <T::Filter as WorldQuery>::set_table(fetch, state, table)
     }
 
-    fn update_component_access(state: &Self::State, access: &mut FilteredAccess<ComponentId>) {
+    fn update_component_access(state: &Self::State, access: &mut FilteredAccess) {
         <T::Filter as WorldQuery>::update_component_access(state, access)
     }
 
@@ -307,17 +303,20 @@ unsafe impl<T: Kind> QueryData for Instance<T> {
 
     const IS_READ_ONLY: bool = true;
 
-    type Item<'a> = Self;
+    type Item<'w, 's> = Self;
 
-    fn shrink<'wlong: 'wshort, 'wshort>(item: Self::Item<'wlong>) -> Self::Item<'wshort> {
+    fn shrink<'wlong: 'wshort, 'wshort, 's>(
+        item: Self::Item<'wlong, 's>,
+    ) -> Self::Item<'wshort, 's> {
         item
     }
 
-    unsafe fn fetch<'w>(
+    unsafe fn fetch<'w, 's>(
+        _state: &'s Self::State,
         _fetch: &mut Self::Fetch<'w>,
         entity: Entity,
         _table_row: TableRow,
-    ) -> Self::Item<'w> {
+    ) -> Self::Item<'w, 's> {
         Instance::from_entity_unchecked(entity)
     }
 }
@@ -371,6 +370,10 @@ impl<T: Kind> RelationshipSourceCollection for Instance<T> {
 
     fn shrink_to_fit(&mut self) {
         self.0.shrink_to_fit();
+    }
+
+    fn extend_from_iter(&mut self, entities: impl IntoIterator<Item = Entity>) {
+        self.0.extend_from_iter(entities)
     }
 }
 
@@ -474,7 +477,7 @@ unsafe impl<T: Component> WorldQuery for InstanceRef<'_, T> {
         <(Instance<T>, &T) as WorldQuery>::set_table(fetch, state, table)
     }
 
-    fn update_component_access(state: &Self::State, access: &mut FilteredAccess<ComponentId>) {
+    fn update_component_access(state: &Self::State, access: &mut FilteredAccess) {
         <(Instance<T>, &T) as WorldQuery>::update_component_access(state, access)
     }
 
@@ -499,18 +502,22 @@ unsafe impl<T: Component> QueryData for InstanceRef<'_, T> {
 
     const IS_READ_ONLY: bool = true;
 
-    type Item<'a> = InstanceRef<'a, T>;
+    type Item<'w, 's> = InstanceRef<'w, T>;
 
-    fn shrink<'wlong: 'wshort, 'wshort>(item: Self::Item<'wlong>) -> Self::Item<'wshort> {
+    fn shrink<'wlong: 'wshort, 'wshort, 's>(
+        item: Self::Item<'wlong, 's>,
+    ) -> Self::Item<'wshort, 's> {
         InstanceRef(item.0, item.1)
     }
 
-    unsafe fn fetch<'w>(
+    unsafe fn fetch<'w, 's>(
+        state: &'s Self::State,
         fetch: &mut Self::Fetch<'w>,
         entity: Entity,
         table_row: TableRow,
-    ) -> Self::Item<'w> {
-        let (instance, data) = <(Instance<T>, &T) as QueryData>::fetch(fetch, entity, table_row);
+    ) -> Self::Item<'w, 's> {
+        let (instance, data) =
+            <(Instance<T>, &T) as QueryData>::fetch(state, fetch, entity, table_row);
         InstanceRef(instance, data)
     }
 }
@@ -639,7 +646,7 @@ unsafe impl<T: Component> WorldQuery for InstanceMut<'_, T> {
         <(Instance<T>, &mut T) as WorldQuery>::set_table(fetch, state, table)
     }
 
-    fn update_component_access(state: &Self::State, access: &mut FilteredAccess<ComponentId>) {
+    fn update_component_access(state: &Self::State, access: &mut FilteredAccess) {
         <(Instance<T>, &T) as WorldQuery>::update_component_access(state, access)
     }
 
@@ -664,19 +671,22 @@ unsafe impl<'b, T: Component<Mutability = Mutable>> QueryData for InstanceMut<'b
 
     const IS_READ_ONLY: bool = false;
 
-    type Item<'a> = InstanceMut<'a, T>;
+    type Item<'w, 's> = InstanceMut<'w, T>;
 
-    fn shrink<'wlong: 'wshort, 'wshort>(item: Self::Item<'wlong>) -> Self::Item<'wshort> {
+    fn shrink<'wlong: 'wshort, 'wshort, 's>(
+        item: Self::Item<'wlong, 's>,
+    ) -> Self::Item<'wshort, 's> {
         InstanceMut(item.0, item.1)
     }
 
-    unsafe fn fetch<'w>(
+    unsafe fn fetch<'w, 's>(
+        state: &'s Self::State,
         fetch: &mut Self::Fetch<'w>,
         entity: Entity,
         table_row: TableRow,
-    ) -> Self::Item<'w> {
+    ) -> Self::Item<'w, 's> {
         let (instance, data) =
-            <(Instance<T>, &mut T) as QueryData>::fetch(fetch, entity, table_row);
+            <(Instance<T>, &mut T) as QueryData>::fetch(state, fetch, entity, table_row);
         InstanceMut(instance, data)
     }
 }
@@ -958,41 +968,41 @@ impl<T: Kind> ContainsInstance<T> for InstanceCommands<'_, T> {
     }
 }
 
-/// Trait used to trigger an [`Instance<T>`] with an [`Event`].
-pub trait TriggerInstance {
-    /// Triggers an [`Event`] on the given [`Instance<T>`].
-    ///
-    /// You can use [`Trigger<E, T>`] to handle an event `E` on an [`Instance<T>`].
-    fn trigger_instance<T: Component>(self, event: impl Event, instance: Instance<T>) -> Self;
-}
+// /// Trait used to trigger an [`Instance<T>`] with an [`Event`].
+// pub trait TriggerInstance {
+//     /// Triggers an [`Event`] on the given [`Instance<T>`].
+//     ///
+//     /// You can use [`Trigger<E, T>`] to handle an event `E` on an [`Instance<T>`].
+//     fn trigger_instance<T: Component>(self, event: impl Event, instance: Instance<T>) -> Self;
+// }
 
-impl TriggerInstance for &mut Commands<'_, '_> {
-    fn trigger_instance<T: Component>(self, event: impl Event, instance: Instance<T>) -> Self {
-        self.queue(move |world: &mut World| {
-            world.trigger_instance(event, instance);
-        });
-        self
-    }
-}
+// impl TriggerInstance for &mut Commands<'_, '_> {
+//     fn trigger_instance<T: Component>(self, event: impl Event, instance: Instance<T>) -> Self {
+//         self.queue(move |world: &mut World| {
+//             world.trigger_instance(event, instance);
+//         });
+//         self
+//     }
+// }
 
-impl TriggerInstance for &mut World {
-    fn trigger_instance<T: Component>(self, event: impl Event, instance: Instance<T>) -> Self {
-        let id = self.component_id::<T>().unwrap();
-        self.trigger_targets(event, (instance.entity(), id));
-        self
-    }
-}
+// impl TriggerInstance for &mut World {
+//     fn trigger_instance<T: Component>(self, event: impl Event, instance: Instance<T>) -> Self {
+//         let id = self.component_id::<T>().unwrap();
+//         self.trigger(event, (instance.entity(), id));
+//         self
+//     }
+// }
 
-/// Trait used to access the a [`Trigger<E, T>::target`] as an [`Instance<T>`] if `T` is a [`Component`].
-pub trait GetTriggerTargetInstance<T: Kind> {
-    /// Returns the [`Instance<T>`] that was targeted by the [`Event`] that triggered this observer. It may
-    /// be [`Instance::PLACEHOLDER`].
-    fn target_instance(&self) -> Instance<T>;
-}
+// /// Trait used to access the a [`Trigger<E, T>::target`] as an [`Instance<T>`] if `T` is a [`Component`].
+// pub trait GetTriggerTargetInstance<T: Kind> {
+//     /// Returns the [`Instance<T>`] that was targeted by the [`Event`] that triggered this observer. It may
+//     /// be [`Instance::PLACEHOLDER`].
+//     fn target_instance(&self) -> Instance<T>;
+// }
 
-impl<E: Event, T: Component> GetTriggerTargetInstance<T> for Trigger<'_, E, T> {
-    fn target_instance(&self) -> Instance<T> {
-        // SAFE: `Trigger` ensures target is an instance of kind `T`.
-        unsafe { Instance::from_entity_unchecked(self.target()) }
-    }
-}
+// impl<E: Event, T: Component> GetTriggerTargetInstance<T> for Trigger<'_, E, T> {
+//     fn target_instance(&self) -> Instance<T> {
+//         // SAFE: `Trigger` ensures target is an instance of kind `T`.
+//         unsafe { Instance::from_entity_unchecked(self.target()) }
+//     }
+// }
