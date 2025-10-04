@@ -968,41 +968,96 @@ impl<T: Kind> ContainsInstance<T> for InstanceCommands<'_, T> {
     }
 }
 
-// /// Trait used to trigger an [`Instance<T>`] with an [`Event`].
-// pub trait TriggerInstance {
-//     /// Triggers an [`Event`] on the given [`Instance<T>`].
-//     ///
-//     /// You can use [`Trigger<E, T>`] to handle an event `E` on an [`Instance<T>`].
-//     fn trigger_instance<T: Component>(self, event: impl Event, instance: Instance<T>) -> Self;
-// }
+/// A macro which implements [`EntityEvent`] from an [`Instance<T>`].
+///
+/// This is useful when you have an [`EntityEvent`] which refers to its target by [`Instance<T>`].
+///
+/// ```
+/// use bevy::prelude::*;
+/// use bevy::ecs::event::EntityTrigger;
+/// use moonshine_kind::prelude::*;
+/// use moonshine_kind::impl_entity_event_from_instance;
+///
+/// #[derive(Component)]
+/// struct Fruit;
+///
+/// #[derive(Event)]
+/// #[event(trigger = EntityTrigger)]
+/// struct Eat {
+///     target: Instance<Fruit>
+/// }
+///
+/// impl_entity_event_from_instance!(Eat { .target, .. });
+///
+/// let mut world = World::new();
+/// let fruit = world.spawn_instance(Fruit).instance();
+/// world.trigger_with(Eat { target: fruit }, EntityTrigger);
+/// ```
+#[macro_export]
+macro_rules! impl_entity_event_from_instance {
+    ($name:ident < $($gen:tt),+ $(,)? > $(where $($where:tt)+)? ) => {
+        $crate::impl_entity_event_from_instance!($name<$($gen),+> { .instance, .. } $(where $($where)+)?);
+    };
 
-// impl TriggerInstance for &mut Commands<'_, '_> {
-//     fn trigger_instance<T: Component>(self, event: impl Event, instance: Instance<T>) -> Self {
-//         self.queue(move |world: &mut World| {
-//             world.trigger_instance(event, instance);
-//         });
-//         self
-//     }
-// }
+    ($name:ident < $($gen:tt),+ $(,)? > { .$field:ident, .. } $(where $($where:tt)+)? ) => {
+        impl<$($gen),+> EntityEvent for $name<$($gen),+>
+        $(where $($where)+)? {
+            fn event_target(&self) -> Entity {
+                self.$field.entity()
+            }
 
-// impl TriggerInstance for &mut World {
-//     fn trigger_instance<T: Component>(self, event: impl Event, instance: Instance<T>) -> Self {
-//         let id = self.component_id::<T>().unwrap();
-//         self.trigger(event, (instance.entity(), id));
-//         self
-//     }
-// }
+            fn event_target_mut(&mut self) -> &mut Entity {
+                // SAFE: In Bevy we trust!
+                unsafe { self.$field.as_entity_mut() }
+            }
+        }
+    };
 
-// /// Trait used to access the a [`Trigger<E, T>::target`] as an [`Instance<T>`] if `T` is a [`Component`].
-// pub trait GetTriggerTargetInstance<T: Kind> {
-//     /// Returns the [`Instance<T>`] that was targeted by the [`Event`] that triggered this observer. It may
-//     /// be [`Instance::PLACEHOLDER`].
-//     fn target_instance(&self) -> Instance<T>;
-// }
+    ($name:ident) => {
+        $crate::impl_entity_event_from_instance!($name { .instance, .. })
+    };
 
-// impl<E: Event, T: Component> GetTriggerTargetInstance<T> for Trigger<'_, E, T> {
-//     fn target_instance(&self) -> Instance<T> {
-//         // SAFE: `Trigger` ensures target is an instance of kind `T`.
-//         unsafe { Instance::from_entity_unchecked(self.target()) }
-//     }
-// }
+    ($name:ident { .$field:ident, .. }) => {
+        impl EntityEvent for $name {
+            fn event_target(&self) -> Entity {
+                self.$field.entity()
+            }
+
+            fn event_target_mut(&mut self) -> &mut Entity {
+                // SAFE: In Bevy we trust!
+                unsafe { self.$field.as_entity_mut() }
+            }
+        }
+
+    }
+}
+
+#[test]
+fn test_impl_entity_event_from_instance() {
+    #![allow(unused)]
+
+    #[derive(Event)]
+    struct Foo {
+        instance: Instance<Any>,
+    }
+
+    #[derive(Event)]
+    struct Bar {
+        inst: Instance<Any>,
+    }
+
+    #[derive(Event)]
+    struct Baz<T: Kind> {
+        instance: Instance<T>,
+    }
+
+    #[derive(Event)]
+    struct Bat<T: Kind> {
+        inst: Instance<T>,
+    }
+
+    impl_entity_event_from_instance!(Foo);
+    impl_entity_event_from_instance!(Bar { .inst, .. });
+    impl_entity_event_from_instance!(Baz<T> where T: Kind);
+    impl_entity_event_from_instance!(Bat<T> { .inst, .. } where T: Kind);
+}
