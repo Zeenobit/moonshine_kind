@@ -192,7 +192,7 @@ struct Container<T: Kind = Any> {
 
 By definition, any [`Instance<T>`] is safely convertible to any [`Instance<U>`][`Instance<T>`] if [`CastInto<U>`][`CastInto`] is implemented for `T`.
 
-This is done using the [`CastInto`] trait. The [`kind`] macro may be used to conveniently implement this:
+This is done using the [`CastInto`] trait:
 
 ```rust
 use bevy::prelude::*;
@@ -293,4 +293,3 @@ You may also contact me on the official [Bevy Discord](https://discord.gg/bevy) 
 [`GetInstanceCommands<T>`]:https://docs.rs/moonshine-kind/latest/moonshine_kind/trait.GetInstanceCommands.html
 [`Any`]:https://docs.rs/moonshine-kind/latest/moonshine_kind/struct.Any.html
 [`CastInto`]:https://docs.rs/moonshine-kind/latest/moonshine_kind/trait.CastInto.html
-[`kind`]:https://docs.rs/moonshine-kind/latest/moonshine_kind/macro.kind.html
