@@ -21,7 +21,7 @@ use bevy_ecs::{
     system::EntityCommands,
     world::unsafe_world_cell::UnsafeWorldCell,
 };
-use bevy_reflect::{Reflect, prelude::ReflectDefault};
+use bevy_reflect::Reflect;
 
 use crate::{Any, CastInto, Kind};
 

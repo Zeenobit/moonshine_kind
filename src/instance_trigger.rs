@@ -9,8 +9,8 @@ use std::{fmt, marker::PhantomData};
 
 /// A custom trigger for events targeting an [`Instance`], differing from the default
 /// [`EntityEvent`] / [`PropagateEntityTrigger`] pair in two ways:
-///
-///
+/// - the `event_target` is stored on the [`Trigger`] to avoid unsafe mutations to an [`Instance`]
+/// - event firing and propagation is conditional on the `event_target` containing the provided [`K`] component
 pub struct InstanceTrigger<E: Event, T: Traversal<E>, K: Component> {
     /// The original [`Entity`] the [`Event`] was _first_ triggered for.
     pub original_event_target: Entity,

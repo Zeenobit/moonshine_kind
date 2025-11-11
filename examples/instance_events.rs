@@ -1,3 +1,5 @@
+//! This example demonstrates usage of a custom entity event
+//! that does not rely on `EntityEvent` for ergonomics and type safety.
 use std::marker::PhantomData;
 
 use bevy::prelude::*;
