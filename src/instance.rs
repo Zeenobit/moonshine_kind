@@ -12,7 +12,8 @@ use bevy_ecs::component::Mutable;
 use bevy_ecs::relationship::RelationshipSourceCollection;
 use bevy_ecs::{
     archetype::Archetype,
-    component::{ComponentId, Components, Tick},
+    change_detection::Tick,
+    component::{ComponentId, Components},
     entity::{EntityMapper, MapEntities},
     prelude::*,
     query::{FilteredAccess, QueryData, ReadOnlyQueryData, WorldQuery},
@@ -20,7 +21,7 @@ use bevy_ecs::{
     system::EntityCommands,
     world::unsafe_world_cell::UnsafeWorldCell,
 };
-use bevy_reflect::Reflect;
+use bevy_reflect::{Reflect, prelude::ReflectDefault};
 
 use crate::{Any, CastInto, Kind};
 
@@ -141,7 +142,7 @@ impl<T: Kind> Instance<T> {
     /// # Safety
     /// Assumes this instance is also a valid `Instance<U>`.
     pub unsafe fn cast_into_unchecked<U: Kind>(self) -> Instance<U> {
-        Instance::from_entity_unchecked(self.entity())
+        unsafe { Instance::from_entity_unchecked(self.entity()) }
     }
 
     /// Returns a mutable reference to the internal [`Entity`] of this [`Instance`].
@@ -258,7 +259,9 @@ unsafe impl<T: Kind> WorldQuery for Instance<T> {
         last_change_tick: Tick,
         change_tick: Tick,
     ) -> Self::Fetch<'w> {
-        <T::Filter as WorldQuery>::init_fetch(world, state, last_change_tick, change_tick)
+        unsafe {
+            <T::Filter as WorldQuery>::init_fetch(world, state, last_change_tick, change_tick)
+        }
     }
 
     const IS_DENSE: bool = <T::Filter as WorldQuery>::IS_DENSE;
@@ -269,11 +272,11 @@ unsafe impl<T: Kind> WorldQuery for Instance<T> {
         archetype: &'w Archetype,
         table: &'w Table,
     ) {
-        <T::Filter as WorldQuery>::set_archetype(fetch, state, archetype, table)
+        unsafe { <T::Filter as WorldQuery>::set_archetype(fetch, state, archetype, table) }
     }
 
     unsafe fn set_table<'w>(fetch: &mut Self::Fetch<'w>, state: &Self::State, table: &'w Table) {
-        <T::Filter as WorldQuery>::set_table(fetch, state, table)
+        unsafe { <T::Filter as WorldQuery>::set_table(fetch, state, table) }
     }
 
     fn update_component_access(state: &Self::State, access: &mut FilteredAccess) {
@@ -303,6 +306,8 @@ unsafe impl<T: Kind> QueryData for Instance<T> {
 
     const IS_READ_ONLY: bool = true;
 
+    const IS_ARCHETYPAL: bool = false;
+
     type Item<'w, 's> = Self;
 
     fn shrink<'wlong: 'wshort, 'wshort, 's>(
@@ -316,8 +321,8 @@ unsafe impl<T: Kind> QueryData for Instance<T> {
         _fetch: &mut Self::Fetch<'w>,
         entity: Entity,
         _table_row: TableRow,
-    ) -> Self::Item<'w, 's> {
-        Instance::from_entity_unchecked(entity)
+    ) -> Option<Self::Item<'w, 's>> {
+        Some(unsafe { Instance::from_entity_unchecked(entity) })
     }
 }
 
@@ -459,7 +464,7 @@ unsafe impl<T: Component> WorldQuery for InstanceRef<'_, T> {
         last_run: Tick,
         this_run: Tick,
     ) -> Self::Fetch<'w> {
-        <(Instance<T>, &T) as WorldQuery>::init_fetch(world, state, last_run, this_run)
+        unsafe { <(Instance<T>, &T) as WorldQuery>::init_fetch(world, state, last_run, this_run) }
     }
 
     const IS_DENSE: bool = <(Instance<T>, &T) as WorldQuery>::IS_DENSE;
@@ -470,11 +475,11 @@ unsafe impl<T: Component> WorldQuery for InstanceRef<'_, T> {
         archetype: &'w Archetype,
         table: &'w Table,
     ) {
-        <(Instance<T>, &T) as WorldQuery>::set_archetype(fetch, state, archetype, table)
+        unsafe { <(Instance<T>, &T) as WorldQuery>::set_archetype(fetch, state, archetype, table) }
     }
 
     unsafe fn set_table<'w>(fetch: &mut Self::Fetch<'w>, state: &Self::State, table: &'w Table) {
-        <(Instance<T>, &T) as WorldQuery>::set_table(fetch, state, table)
+        unsafe { <(Instance<T>, &T) as WorldQuery>::set_table(fetch, state, table) }
     }
 
     fn update_component_access(state: &Self::State, access: &mut FilteredAccess) {
@@ -502,6 +507,8 @@ unsafe impl<T: Component> QueryData for InstanceRef<'_, T> {
 
     const IS_READ_ONLY: bool = true;
 
+    const IS_ARCHETYPAL: bool = false;
+
     type Item<'w, 's> = InstanceRef<'w, T>;
 
     fn shrink<'wlong: 'wshort, 'wshort, 's>(
@@ -515,10 +522,10 @@ unsafe impl<T: Component> QueryData for InstanceRef<'_, T> {
         fetch: &mut Self::Fetch<'w>,
         entity: Entity,
         table_row: TableRow,
-    ) -> Self::Item<'w, 's> {
+    ) -> Option<Self::Item<'w, 's>> {
         let (instance, data) =
-            <(Instance<T>, &T) as QueryData>::fetch(state, fetch, entity, table_row);
-        InstanceRef(instance, data)
+            unsafe { <(Instance<T>, &T) as QueryData>::fetch(state, fetch, entity, table_row)? };
+        Some(InstanceRef(instance, data))
     }
 }
 
@@ -540,8 +547,8 @@ impl<'a, T: Component> InstanceRef<'a, T> {
     /// Assumes `entity` is a valid instance of kind `T`.
     pub unsafe fn from_entity_unchecked(entity: EntityRef<'a>) -> Self {
         Self(
-            Instance::from_entity_unchecked(entity.id()),
-            entity.get().unwrap(),
+            unsafe { Instance::from_entity_unchecked(entity.id()) },
+            entity.get::<T>().unwrap(),
         )
     }
 }
@@ -628,7 +635,9 @@ unsafe impl<T: Component> WorldQuery for InstanceMut<'_, T> {
         last_run: Tick,
         this_run: Tick,
     ) -> Self::Fetch<'w> {
-        <(Instance<T>, &mut T) as WorldQuery>::init_fetch(world, state, last_run, this_run)
+        unsafe {
+            <(Instance<T>, &mut T) as WorldQuery>::init_fetch(world, state, last_run, this_run)
+        }
     }
 
     const IS_DENSE: bool = <(Instance<T>, &T) as WorldQuery>::IS_DENSE;
@@ -639,11 +648,13 @@ unsafe impl<T: Component> WorldQuery for InstanceMut<'_, T> {
         archetype: &'w Archetype,
         table: &'w Table,
     ) {
-        <(Instance<T>, &mut T) as WorldQuery>::set_archetype(fetch, state, archetype, table)
+        unsafe {
+            <(Instance<T>, &mut T) as WorldQuery>::set_archetype(fetch, state, archetype, table)
+        }
     }
 
     unsafe fn set_table<'w>(fetch: &mut Self::Fetch<'w>, state: &Self::State, table: &'w Table) {
-        <(Instance<T>, &mut T) as WorldQuery>::set_table(fetch, state, table)
+        unsafe { <(Instance<T>, &mut T) as WorldQuery>::set_table(fetch, state, table) }
     }
 
     fn update_component_access(state: &Self::State, access: &mut FilteredAccess) {
@@ -671,6 +682,8 @@ unsafe impl<'b, T: Component<Mutability = Mutable>> QueryData for InstanceMut<'b
 
     const IS_READ_ONLY: bool = false;
 
+    const IS_ARCHETYPAL: bool = false;
+
     type Item<'w, 's> = InstanceMut<'w, T>;
 
     fn shrink<'wlong: 'wshort, 'wshort, 's>(
@@ -684,10 +697,11 @@ unsafe impl<'b, T: Component<Mutability = Mutable>> QueryData for InstanceMut<'b
         fetch: &mut Self::Fetch<'w>,
         entity: Entity,
         table_row: TableRow,
-    ) -> Self::Item<'w, 's> {
-        let (instance, data) =
-            <(Instance<T>, &mut T) as QueryData>::fetch(state, fetch, entity, table_row);
-        InstanceMut(instance, data)
+    ) -> Option<Self::Item<'w, 's>> {
+        let (instance, data) = unsafe {
+            <(Instance<T>, &mut T) as QueryData>::fetch(state, fetch, entity, table_row)?
+        };
+        Some(InstanceMut(instance, data))
     }
 }
 
@@ -709,8 +723,8 @@ impl<'a, T: Component<Mutability = Mutable>> InstanceMut<'a, T> {
     /// Assumes `entity` is a valid instance of kind `T`.
     pub unsafe fn from_entity_unchecked(entity: EntityMut<'a>) -> Self {
         let id = entity.id();
-        let data = entity.into_mut().unwrap();
-        Self(Instance::from_entity_unchecked(id), data)
+        let data = entity.into_mut::<T>().unwrap();
+        Self(unsafe { Instance::from_entity_unchecked(id) }, data)
     }
 }
 
@@ -855,7 +869,7 @@ impl<T: Kind> GetInstanceCommands<T> for Commands<'_, '_> {
 ///
 /// impl EatApple for InstanceCommands<'_, Apple> {
 ///     fn eat(&mut self) {
-///         info!("Crunch!");
+///         println!("Crunch!");
 ///         self.despawn();
 ///     }
 /// }
