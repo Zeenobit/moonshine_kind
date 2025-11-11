@@ -3,6 +3,7 @@
 
 /// Prelude module to import all necessary traits and types for [`Kind`] semantics.
 pub mod prelude {
+    pub use crate::instance_trigger::InstanceTrigger;
     pub use crate::{CastInto, Kind};
     pub use crate::{
         ComponentInstance, InsertInstance, InsertInstanceWorld, SpawnInstance, SpawnInstanceWorld,
@@ -12,6 +13,7 @@ pub mod prelude {
 }
 
 mod instance;
+mod instance_trigger;
 
 use bevy_ecs::world::DeferredWorld;
 use bevy_reflect::Reflect;
@@ -84,13 +86,13 @@ pub trait CastInto<T: Kind>: Kind {
     unsafe fn cast(instance: Instance<Self>) -> Instance<T> {
         // SAFE: Because we said so.
         // TODO: Can we use required components to enforce this?
-        Instance::from_entity_unchecked(instance.entity())
+        unsafe { Instance::from_entity_unchecked(instance.entity()) }
     }
 }
 
 impl<T: Kind> CastInto<T> for T {
     unsafe fn cast(instance: Instance<Self>) -> Instance<T> {
-        Instance::from_entity_unchecked(instance.entity())
+        unsafe { Instance::from_entity_unchecked(instance.entity()) }
     }
 }
 
