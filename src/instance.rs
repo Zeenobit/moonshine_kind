@@ -7,15 +7,15 @@ use std::{
     ops::{Deref, DerefMut},
 };
 
-use bevy_ecs::change_detection::MaybeLocation;
+use bevy_ecs::change_detection::{MaybeLocation, Tick};
 use bevy_ecs::component::Mutable;
 use bevy_ecs::relationship::RelationshipSourceCollection;
 use bevy_ecs::{
     archetype::Archetype,
-    component::{ComponentId, Components, Tick},
+    component::{ComponentId, Components},
     entity::{EntityMapper, MapEntities},
     prelude::*,
-    query::{FilteredAccess, QueryData, ReadOnlyQueryData, WorldQuery},
+    query::{EcsAccessType, FilteredAccess, QueryData, QueryFilter, ReadOnlyQueryData, WorldQuery},
     storage::{Table, TableRow},
     system::EntityCommands,
     world::unsafe_world_cell::UnsafeWorldCell,
@@ -302,6 +302,7 @@ unsafe impl<T: Kind> QueryData for Instance<T> {
     type ReadOnly = Self;
 
     const IS_READ_ONLY: bool = true;
+    const IS_ARCHETYPAL: bool = <T::Filter as QueryFilter>::IS_ARCHETYPAL;
 
     type Item<'w, 's> = Self;
 
@@ -316,8 +317,12 @@ unsafe impl<T: Kind> QueryData for Instance<T> {
         _fetch: &mut Self::Fetch<'w>,
         entity: Entity,
         _table_row: TableRow,
-    ) -> Self::Item<'w, 's> {
-        Instance::from_entity_unchecked(entity)
+    ) -> Option<Self::Item<'w, 's>> {
+        Some(Instance::from_entity_unchecked(entity))
+    }
+
+    fn iter_access(_state: &Self::State) -> impl Iterator<Item = EcsAccessType<'_>> {
+        std::iter::empty()
     }
 }
 
@@ -501,6 +506,7 @@ unsafe impl<T: Component> QueryData for InstanceRef<'_, T> {
     type ReadOnly = Self;
 
     const IS_READ_ONLY: bool = true;
+    const IS_ARCHETYPAL: bool = <(Instance<T>, &T) as QueryData>::IS_ARCHETYPAL;
 
     type Item<'w, 's> = InstanceRef<'w, T>;
 
@@ -515,10 +521,14 @@ unsafe impl<T: Component> QueryData for InstanceRef<'_, T> {
         fetch: &mut Self::Fetch<'w>,
         entity: Entity,
         table_row: TableRow,
-    ) -> Self::Item<'w, 's> {
+    ) -> Option<Self::Item<'w, 's>> {
         let (instance, data) =
-            <(Instance<T>, &T) as QueryData>::fetch(state, fetch, entity, table_row);
-        InstanceRef(instance, data)
+            <(Instance<T>, &T) as QueryData>::fetch(state, fetch, entity, table_row)?;
+        Some(InstanceRef(instance, data))
+    }
+
+    fn iter_access(state: &Self::State) -> impl Iterator<Item = EcsAccessType<'_>> {
+        <(Instance<T>, &T) as QueryData>::iter_access(state)
     }
 }
 
@@ -670,6 +680,7 @@ unsafe impl<'b, T: Component<Mutability = Mutable>> QueryData for InstanceMut<'b
     type ReadOnly = InstanceRef<'b, T>;
 
     const IS_READ_ONLY: bool = false;
+    const IS_ARCHETYPAL: bool = <(Instance<T>, &mut T) as QueryData>::IS_ARCHETYPAL;
 
     type Item<'w, 's> = InstanceMut<'w, T>;
 
@@ -684,10 +695,14 @@ unsafe impl<'b, T: Component<Mutability = Mutable>> QueryData for InstanceMut<'b
         fetch: &mut Self::Fetch<'w>,
         entity: Entity,
         table_row: TableRow,
-    ) -> Self::Item<'w, 's> {
+    ) -> Option<Self::Item<'w, 's>> {
         let (instance, data) =
-            <(Instance<T>, &mut T) as QueryData>::fetch(state, fetch, entity, table_row);
-        InstanceMut(instance, data)
+            <(Instance<T>, &mut T) as QueryData>::fetch(state, fetch, entity, table_row)?;
+        Some(InstanceMut(instance, data))
+    }
+
+    fn iter_access(state: &Self::State) -> impl Iterator<Item = EcsAccessType<'_>> {
+        <(Instance<T>, &mut T) as QueryData>::iter_access(state)
     }
 }
 
