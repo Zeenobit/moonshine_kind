@@ -529,7 +529,7 @@ unsafe impl<T: Component> QueryData for InstanceRef<'_, T> {
         table_row: TableRow,
     ) -> Option<Self::Item<'w, 's>> {
         <(Instance<T>, &T) as QueryData>::fetch(state, fetch, entity, table_row)
-            .and_then(|(instance, data)| Some(InstanceRef(instance, data)))
+            .map(|(instance, data)| InstanceRef(instance, data))
     }
 
     fn iter_access(state: &Self::State) -> impl Iterator<Item = EcsAccessType<'_>> {
@@ -703,7 +703,7 @@ unsafe impl<'b, T: Component<Mutability = Mutable>> QueryData for InstanceMut<'b
         table_row: TableRow,
     ) -> Option<Self::Item<'w, 's>> {
         <(Instance<T>, &mut T) as QueryData>::fetch(state, fetch, entity, table_row)
-            .and_then(|(instance, data)| Some(InstanceMut(instance, data)))
+            .map(|(instance, data)| InstanceMut(instance, data))
     }
 
     fn iter_access(state: &Self::State) -> impl Iterator<Item = EcsAccessType<'_>> {
