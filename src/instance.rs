@@ -445,7 +445,9 @@ pub trait ContainsInstance<T: Kind> {
 ///
 /// // Entity Access:
 /// fn fresh_apples_world<'a>(world: &'a World) -> Vec<InstanceRef<'a, Apple>> {
-///    world.iter_entities()
+///    world.try_query::<EntityRef>()
+///         .unwrap()
+///         .iter(&world)
 ///         .filter_map(|entity| InstanceRef::from_entity(entity))
 ///         .collect()
 /// }
