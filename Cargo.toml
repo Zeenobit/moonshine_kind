@@ -12,9 +12,9 @@ repository = "https://github.com/Zeenobit/moonshine_kind"
 
 [dependencies]
 disqualified = "1"
-bevy_ecs = "0.17"
-bevy_reflect = "0.17"
-bevy_utils = "0.17"
+bevy_ecs = "0.18"
+bevy_reflect = "0.18"
+bevy_utils = "0.18"
 
 [dev-dependencies]
-bevy = "0.17"
+bevy = "0.18"

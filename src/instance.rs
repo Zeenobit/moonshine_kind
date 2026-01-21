@@ -9,10 +9,12 @@ use std::{
 
 use bevy_ecs::change_detection::MaybeLocation;
 use bevy_ecs::component::Mutable;
+use bevy_ecs::query::EcsAccessType;
 use bevy_ecs::relationship::RelationshipSourceCollection;
 use bevy_ecs::{
     archetype::Archetype,
-    component::{ComponentId, Components, Tick},
+    change_detection::Tick,
+    component::{ComponentId, Components},
     entity::{EntityMapper, MapEntities},
     prelude::*,
     query::{FilteredAccess, QueryData, ReadOnlyQueryData, WorldQuery},
@@ -148,6 +150,7 @@ impl<T: Kind> Instance<T> {
     ///
     /// # Safety
     /// You are responsible to ensure the entity is still a valid instance of [`Kind`] `T`.
+    #[deprecated(note = "use `Instance::<T>::from_entity_unchecked` instead")]
     pub unsafe fn as_entity_mut(&mut self) -> &mut Entity {
         &mut self.0
     }
@@ -301,7 +304,9 @@ unsafe impl<T: Kind> ReadOnlyQueryData for Instance<T> {}
 unsafe impl<T: Kind> QueryData for Instance<T> {
     type ReadOnly = Self;
 
-    const IS_READ_ONLY: bool = true;
+    const IS_READ_ONLY: bool = <Entity as QueryData>::IS_READ_ONLY;
+
+    const IS_ARCHETYPAL: bool = <Entity as QueryData>::IS_ARCHETYPAL;
 
     type Item<'w, 's> = Self;
 
@@ -316,8 +321,13 @@ unsafe impl<T: Kind> QueryData for Instance<T> {
         _fetch: &mut Self::Fetch<'w>,
         entity: Entity,
         _table_row: TableRow,
-    ) -> Self::Item<'w, 's> {
-        Instance::from_entity_unchecked(entity)
+    ) -> Option<Self::Item<'w, 's>> {
+        Some(Instance::from_entity_unchecked(entity))
+    }
+
+    fn iter_access(_state: &Self::State) -> impl Iterator<Item = EcsAccessType<'_>> {
+        // Based on impl for `Entity`
+        std::iter::empty()
     }
 }
 
@@ -502,6 +512,8 @@ unsafe impl<T: Component> QueryData for InstanceRef<'_, T> {
 
     const IS_READ_ONLY: bool = true;
 
+    const IS_ARCHETYPAL: bool = <&'static T as QueryData>::IS_ARCHETYPAL;
+
     type Item<'w, 's> = InstanceRef<'w, T>;
 
     fn shrink<'wlong: 'wshort, 'wshort, 's>(
@@ -515,10 +527,13 @@ unsafe impl<T: Component> QueryData for InstanceRef<'_, T> {
         fetch: &mut Self::Fetch<'w>,
         entity: Entity,
         table_row: TableRow,
-    ) -> Self::Item<'w, 's> {
-        let (instance, data) =
-            <(Instance<T>, &T) as QueryData>::fetch(state, fetch, entity, table_row);
-        InstanceRef(instance, data)
+    ) -> Option<Self::Item<'w, 's>> {
+        <(Instance<T>, &T) as QueryData>::fetch(state, fetch, entity, table_row)
+            .and_then(|(instance, data)| Some(InstanceRef(instance, data)))
+    }
+
+    fn iter_access(state: &Self::State) -> impl Iterator<Item = EcsAccessType<'_>> {
+        <(Instance<T>, &T) as QueryData>::iter_access(state)
     }
 }
 
@@ -671,6 +686,8 @@ unsafe impl<'b, T: Component<Mutability = Mutable>> QueryData for InstanceMut<'b
 
     const IS_READ_ONLY: bool = false;
 
+    const IS_ARCHETYPAL: bool = <&'static mut T as QueryData>::IS_ARCHETYPAL;
+
     type Item<'w, 's> = InstanceMut<'w, T>;
 
     fn shrink<'wlong: 'wshort, 'wshort, 's>(
@@ -684,10 +701,13 @@ unsafe impl<'b, T: Component<Mutability = Mutable>> QueryData for InstanceMut<'b
         fetch: &mut Self::Fetch<'w>,
         entity: Entity,
         table_row: TableRow,
-    ) -> Self::Item<'w, 's> {
-        let (instance, data) =
-            <(Instance<T>, &mut T) as QueryData>::fetch(state, fetch, entity, table_row);
-        InstanceMut(instance, data)
+    ) -> Option<Self::Item<'w, 's>> {
+        <(Instance<T>, &mut T) as QueryData>::fetch(state, fetch, entity, table_row)
+            .and_then(|(instance, data)| Some(InstanceMut(instance, data)))
+    }
+
+    fn iter_access(state: &Self::State) -> impl Iterator<Item = EcsAccessType<'_>> {
+        <(Instance<T>, &mut T) as QueryData>::iter_access(state)
     }
 }
 
@@ -1005,11 +1025,6 @@ macro_rules! impl_entity_event_from_instance {
             fn event_target(&self) -> Entity {
                 self.$field.entity()
             }
-
-            fn event_target_mut(&mut self) -> &mut Entity {
-                // SAFE: In Bevy we trust!
-                unsafe { self.$field.as_entity_mut() }
-            }
         }
     };
 
@@ -1021,11 +1036,6 @@ macro_rules! impl_entity_event_from_instance {
         impl EntityEvent for $name {
             fn event_target(&self) -> Entity {
                 self.$field.entity()
-            }
-
-            fn event_target_mut(&mut self) -> &mut Entity {
-                // SAFE: In Bevy we trust!
-                unsafe { self.$field.as_entity_mut() }
             }
         }
 
