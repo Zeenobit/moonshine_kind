@@ -1031,7 +1031,7 @@ macro_rules! impl_entity_event_from_instance {
     };
 
     ($name:ident) => {
-        $crate::impl_entity_event_from_instance!($name { .instance, .. })
+        $crate::impl_entity_event_from_instance!($name { .instance, .. });
     };
 
     ($name:ident { .$field:ident, .. }) => {
