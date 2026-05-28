@@ -1154,14 +1154,15 @@ impl<T: Kind> RelationshipSourceCollection for InstanceVec<T> {
 mod test_instance_vec {
     use super::*;
 
-    use crate::prelude::*;
-    use bevy::prelude::*;
-    use moonshine_util::expect::Expect;
-
     // In a world, where the relationship:
     //      Friends(Vec<Instance<Person>>) <-> FriendOf(Instance<Person>)
     // Cannot exist due to Bevy derive requirements and Rust trait implementation restrictions...
     // This is a workaround to sort of guarantee kind safety:
+
+    use bevy::prelude::*;
+    use moonshine_util::expect::Expect; // <--- Required for this pattern to work.
+
+    use crate::prelude::*;
 
     // Marker to "guarantee" kind safety across related components:
     #[derive(Component)]
@@ -1184,7 +1185,7 @@ mod test_instance_vec {
     #[relationship(relationship_target = Friends)]
     struct FriendOf(
         // This entity can point to anything, but if it points to anything other
-        // than a Person, it would create a dangling relationship.
+        // than a Person, it would cause a panic because both `Friends` and `FriendOf` expect `Person`.
         pub Entity,
     );
 
