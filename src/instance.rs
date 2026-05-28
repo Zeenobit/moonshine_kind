@@ -7,6 +7,7 @@ use std::{
     ops::{Deref, DerefMut},
 };
 
+use bevy_derive::{Deref, DerefMut};
 use bevy_ecs::change_detection::MaybeLocation;
 use bevy_ecs::component::Mutable;
 use bevy_ecs::query::EcsAccessType;
@@ -1072,4 +1073,158 @@ fn test_impl_entity_event_from_instance() {
     impl_entity_event_from_instance!(Bar { .inst, .. });
     impl_entity_event_from_instance!(Baz<T> where T: Kind);
     impl_entity_event_from_instance!(Bat<T> { .inst, .. } where T: Kind);
+}
+
+// Experimental
+#[doc(hidden)]
+#[derive(Deref, DerefMut)]
+pub struct InstanceVec<T: Kind>(Vec<Instance<T>>);
+
+impl<T: Kind> Default for InstanceVec<T> {
+    fn default() -> Self {
+        Self(Vec::new())
+    }
+}
+
+impl<T: Kind> InstanceVec<T> {
+    #[doc(hidden)]
+    pub fn with_capacity(capacity: usize) -> Self {
+        Self(Vec::with_capacity(capacity))
+    }
+}
+
+impl<T: Kind> RelationshipSourceCollection for InstanceVec<T> {
+    type SourceIter<'a>
+        = std::iter::Map<std::slice::Iter<'a, Instance<T>>, fn(&Instance<T>) -> Entity>
+    where
+        Self: 'a;
+
+    fn new() -> Self {
+        Self::default()
+    }
+
+    fn with_capacity(capacity: usize) -> Self {
+        Self::with_capacity(capacity)
+    }
+
+    fn reserve(&mut self, additional: usize) {
+        self.0.reserve(additional);
+    }
+
+    fn add(&mut self, entity: Entity) -> bool {
+        self.0
+            .push(unsafe { Instance::from_entity_unchecked(entity) });
+        true
+    }
+
+    fn remove(&mut self, entity: Entity) -> bool {
+        let Some(index) = self.0.iter().position(|i| *i == entity) else {
+            return false;
+        };
+        self.0.swap_remove(index);
+        true
+    }
+
+    fn iter(&self) -> Self::SourceIter<'_> {
+        self.0.iter().map(|i| i.entity())
+    }
+
+    fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    fn clear(&mut self) {
+        self.0.clear()
+    }
+
+    fn shrink_to_fit(&mut self) {
+        self.0.shrink_to_fit()
+    }
+
+    fn extend_from_iter(&mut self, entities: impl IntoIterator<Item = Entity>) {
+        self.0.extend(
+            entities
+                .into_iter()
+                .map(|entity| unsafe { Instance::from_entity_unchecked(entity) }),
+        )
+    }
+}
+
+#[cfg(test)]
+mod test_instance_vec {
+    use super::*;
+
+    use crate::prelude::*;
+    use bevy::prelude::*;
+    use moonshine_util::expect::Expect;
+
+    // In a world, where the relationship:
+    //      Friends(Vec<Instance<Person>>) <-> FriendOf(Instance<Person>)
+    // Cannot exist due to Bevy derive requirements and Rust trait implementation restrictions...
+    // This is a workaround to sort of guarantee kind safety:
+
+    // Marker to "guarantee" kind safety across related components:
+    #[derive(Component)]
+    struct Person;
+
+    // A potato is not a person. It doesn't have friends. :(
+    #[derive(Component)]
+    struct Potato;
+
+    #[derive(Component, Deref)]
+    #[require(Expect<Person>)] // <--- Only People can have Friends
+    #[relationship_target(relationship = FriendOf)]
+    struct Friends(
+        // Wrapper around `Vec<Instance<Person>>` to implement `RelationshipSourceCollection`
+        InstanceVec<Person>,
+    );
+
+    #[derive(Component)]
+    #[require(Expect<Person>)] // <--- Only People become Friends
+    #[relationship(relationship_target = Friends)]
+    struct FriendOf(
+        // This entity can point to anything, but if it points to anything other
+        // than a Person, it would create a dangling relationship.
+        pub Entity,
+    );
+
+    #[test]
+    fn test_instance_vec_relationship() {
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins);
+        let w = app.world_mut();
+        let p0 = w.spawn_instance(Person).instance();
+        let p1 = w.spawn_instance(Person).instance();
+        w.entity_mut(*p1).insert(FriendOf(*p0));
+
+        let fs = w.get::<Friends>(*p0).expect("Person 0 must have Friends");
+        let f: Instance<Person> = *fs.first().expect("Person 0 must have at least 1 friend");
+        assert_eq!(f, p1, "Person 1 must be a friend of Person 0");
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_instance_vec_relationship_panic_1() {
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins);
+        let w = app.world_mut();
+        let potato = w.spawn_instance(Potato).instance();
+        let person = w.spawn_instance(Person).instance();
+
+        // PANIC: Person cannot be friends with Potato. :(
+        w.entity_mut(*person).insert(FriendOf(*potato));
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_instance_vec_relationship_panic_2() {
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins);
+        let w = app.world_mut();
+        let potato = w.spawn_instance(Potato).instance();
+        let person = w.spawn_instance(Person).instance();
+
+        // PANIC: Potato cannot be friends with Person. :(
+        w.entity_mut(*potato).insert(FriendOf(*person));
+    }
 }
