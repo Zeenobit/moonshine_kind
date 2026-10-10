@@ -10,7 +10,7 @@ use std::{
 use bevy_derive::{Deref, DerefMut};
 use bevy_ecs::change_detection::MaybeLocation;
 use bevy_ecs::component::Mutable;
-use bevy_ecs::query::EcsAccessType;
+use bevy_ecs::query::{EcsAccessType, FilteredAccessSet};
 use bevy_ecs::relationship::RelationshipSourceCollection;
 use bevy_ecs::{
     archetype::Archetype,
@@ -298,6 +298,24 @@ unsafe impl<T: Kind> WorldQuery for Instance<T> {
     ) -> bool {
         <T::Filter as WorldQuery>::matches_component_set(state, set_contains_id)
     }
+
+    fn init_nested_access(
+        state: &Self::State,
+        system_name: Option<&str>,
+        component_access_set: &mut FilteredAccessSet,
+        world: UnsafeWorldCell,
+    ) {
+        <T::Filter as WorldQuery>::init_nested_access(
+            state,
+            system_name,
+            component_access_set,
+            world,
+        )
+    }
+
+    fn update_archetypes(state: &mut Self::State, world: UnsafeWorldCell) {
+        <T::Filter as WorldQuery>::update_archetypes(state, world)
+    }
 }
 
 unsafe impl<T: Kind> IterQueryData for Instance<T> {}
@@ -510,6 +528,24 @@ unsafe impl<T: Component> WorldQuery for InstanceRef<'_, T> {
     ) -> bool {
         <(Instance<T>, &T) as WorldQuery>::matches_component_set(state, set_contains_id)
     }
+
+    fn init_nested_access(
+        state: &Self::State,
+        system_name: Option<&str>,
+        component_access_set: &mut FilteredAccessSet,
+        world: UnsafeWorldCell,
+    ) {
+        <(Instance<T>, &T) as WorldQuery>::init_nested_access(
+            state,
+            system_name,
+            component_access_set,
+            world,
+        )
+    }
+
+    fn update_archetypes(state: &mut Self::State, world: UnsafeWorldCell) {
+        <(Instance<T>, &T) as WorldQuery>::update_archetypes(state, world)
+    }
 }
 
 unsafe impl<T: Component> QueryData for InstanceRef<'_, T> {
@@ -705,18 +741,36 @@ unsafe impl<T: Component> WorldQuery for InstanceMut<'_, T> {
     }
 
     fn init_state(world: &mut World) -> Self::State {
-        <(Instance<T>, &T) as WorldQuery>::init_state(world)
+        <(Instance<T>, &mut T) as WorldQuery>::init_state(world)
     }
 
     fn get_state(components: &Components) -> Option<Self::State> {
-        <(Instance<T>, &T) as WorldQuery>::get_state(components)
+        <(Instance<T>, &mut T) as WorldQuery>::get_state(components)
     }
 
     fn matches_component_set(
         state: &Self::State,
         set_contains_id: &impl Fn(ComponentId) -> bool,
     ) -> bool {
-        <(Instance<T>, &T) as WorldQuery>::matches_component_set(state, set_contains_id)
+        <(Instance<T>, &mut T) as WorldQuery>::matches_component_set(state, set_contains_id)
+    }
+
+    fn init_nested_access(
+        state: &Self::State,
+        system_name: Option<&str>,
+        component_access_set: &mut FilteredAccessSet,
+        world: UnsafeWorldCell,
+    ) {
+        <(Instance<T>, &mut T) as WorldQuery>::init_nested_access(
+            state,
+            system_name,
+            component_access_set,
+            world,
+        )
+    }
+
+    fn update_archetypes(state: &mut Self::State, world: UnsafeWorldCell) {
+        <(Instance<T>, &T) as WorldQuery>::update_archetypes(state, world)
     }
 }
 
@@ -884,6 +938,14 @@ impl<T: Component> DetectChanges for InstanceMut<'_, T> {
 
     fn is_changed_after(&self, other: Tick) -> bool {
         self.1.is_changed_after(other)
+    }
+
+    fn this_run(&self) -> Tick {
+        self.1.this_run()
+    }
+
+    fn last_run(&self) -> Tick {
+        self.1.last_run()
     }
 }
 
