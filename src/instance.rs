@@ -698,8 +698,10 @@ unsafe impl<T: Component> WorldQuery for InstanceMut<'_, T> {
         <(Instance<T>, &mut T) as WorldQuery>::set_table(fetch, state, table)
     }
 
+    // Mutable instance queries write `T`, so they must register write access (not read access)
+    // or Bevy lets them run in parallel with readers of the same component.
     fn update_component_access(state: &Self::State, access: &mut FilteredAccess) {
-        <(Instance<T>, &T) as WorldQuery>::update_component_access(state, access)
+        <(Instance<T>, &mut T) as WorldQuery>::update_component_access(state, access)
     }
 
     fn init_state(world: &mut World) -> Self::State {
