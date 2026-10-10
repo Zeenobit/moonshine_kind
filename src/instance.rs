@@ -734,8 +734,6 @@ unsafe impl<T: Component> WorldQuery for InstanceMut<'_, T> {
         <(Instance<T>, &mut T) as WorldQuery>::set_table(fetch, state, table)
     }
 
-    // Mutable instance queries write `T`, so they must register write access (not read access)
-    // or Bevy lets them run in parallel with readers of the same component.
     fn update_component_access(state: &Self::State, access: &mut FilteredAccess) {
         <(Instance<T>, &mut T) as WorldQuery>::update_component_access(state, access)
     }
@@ -1233,7 +1231,7 @@ impl<T: Kind> InstanceVec<T> {
 
 impl<T: Kind> MapEntities for InstanceVec<T> {
     fn map_entities<M: EntityMapper>(&mut self, entity_mapper: &mut M) {
-        let olds: Vec<_> = self.0.drain(..).collect();
+        let olds: Vec<_> = std::mem::take(&mut self.0);
         for old in olds {
             let new_entity = entity_mapper.get_mapped(old.entity());
             // SAFE: In Deserializer, we trust.
