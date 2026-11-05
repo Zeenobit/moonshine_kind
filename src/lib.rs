@@ -7,8 +7,8 @@ pub mod prelude {
     pub use crate::{
         ComponentInstance, InsertInstance, InsertInstanceWorld, SpawnInstance, SpawnInstanceWorld,
     };
-    pub use crate::{ContainsInstance, Instance, InstanceMut, InstanceRef};
-    pub use crate::{GetInstanceCommands, InstanceCommands};
+    pub use crate::{ContainsInstance, Instance, InstanceMut, InstanceRef, InstanceWorldMut};
+    pub use crate::{GetInstanceCommands, InstanceCommand, InstanceCommands};
 }
 
 mod instance;

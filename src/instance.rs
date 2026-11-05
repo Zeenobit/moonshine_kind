@@ -10,6 +10,7 @@ use std::{
 use bevy_derive::{Deref, DerefMut};
 use bevy_ecs::change_detection::MaybeLocation;
 use bevy_ecs::component::Mutable;
+use bevy_ecs::error::EntityCommandOutput;
 use bevy_ecs::query::{EcsAccessType, FilteredAccessSet};
 use bevy_ecs::relationship::RelationshipSourceCollection;
 use bevy_ecs::{
@@ -977,6 +978,52 @@ impl<T: Component> ContainsInstance<T> for InstanceMut<'_, T> {
     }
 }
 
+pub struct InstanceWorldMut<'w, T: Kind>(EntityWorldMut<'w>, PhantomData<T>);
+
+impl<'w, T: Kind> InstanceWorldMut<'w, T> {
+    pub fn from_entity(entity: EntityWorldMut<'w>) -> Option<Self>
+    where
+        T: Component,
+    {
+        entity.contains::<T>().then(|| Self(entity, PhantomData))
+    }
+
+    pub unsafe fn from_entity_unchecked(entity: EntityWorldMut<'w>) -> Self {
+        Self(entity, PhantomData)
+    }
+
+    pub fn instance(&self) -> Instance<T> {
+        // SAFE: Enforced at construction
+        unsafe { Instance::from_entity_unchecked(self.entity()) }
+    }
+
+    pub fn entity(&self) -> Entity {
+        self.0.id()
+    }
+
+    pub fn world(&self) -> &World {
+        self.0.world()
+    }
+
+    pub unsafe fn world_mut(&mut self) -> &mut World {
+        self.0.world_mut()
+    }
+}
+
+impl<'w, T: Kind> Deref for InstanceWorldMut<'w, T> {
+    type Target = EntityWorldMut<'w>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<'w, T: Kind> DerefMut for InstanceWorldMut<'w, T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
 /// Extension trait to access [`InstanceCommands<T>`] from [`Commands`].
 ///
 /// See [`InstanceCommands`] for more information.
@@ -989,6 +1036,12 @@ impl<T: Kind> GetInstanceCommands<T> for Commands<'_, '_> {
     fn instance(&mut self, instance: Instance<T>) -> InstanceCommands<'_, T> {
         InstanceCommands(self.entity(instance.entity()), PhantomData)
     }
+}
+
+pub trait InstanceCommand<T: Kind>: 'static + Send + Sync {
+    type Out: EntityCommandOutput;
+
+    fn apply(self, instance: InstanceWorldMut<T>) -> Self::Out;
 }
 
 /// [`EntityCommands`] with kind semantics.
@@ -1028,6 +1081,18 @@ impl<T: Kind> GetInstanceCommands<T> for Commands<'_, '_> {
 /// # bevy_ecs::system::assert_is_system(eat_apples);
 pub struct InstanceCommands<'a, T: Kind>(EntityCommands<'a>, PhantomData<T>);
 
+struct InstanceCommandExecutor<T: Kind, C: InstanceCommand<T>>(C, PhantomData<T>);
+
+impl<T: Kind, C: InstanceCommand<T>> EntityCommand for InstanceCommandExecutor<T, C> {
+    type Out = C::Out;
+
+    fn apply(self, entity: EntityWorldMut) -> Self::Out {
+        // SAFE: Enforced via `InstanceCommands<T>`
+        let instance = unsafe { InstanceWorldMut::from_entity_unchecked(entity) };
+        self.0.apply(instance)
+    }
+}
+
 impl<'a, T: Kind> InstanceCommands<'a, T> {
     /// Creates a new [`InstanceCommands<T>`] from [`EntityCommands`] without any validation.
     ///
@@ -1035,6 +1100,11 @@ impl<'a, T: Kind> InstanceCommands<'a, T> {
     /// Assumes `entity` is a valid instance of kind `T`.
     pub unsafe fn from_entity_unchecked(entity: EntityCommands<'a>) -> Self {
         Self(entity, PhantomData)
+    }
+
+    pub fn queue(&mut self, command: impl InstanceCommand<T>) -> &mut Self {
+        self.0.queue(InstanceCommandExecutor(command, PhantomData));
+        self
     }
 
     /// Creates a new [`InstanceCommands<T>`] from [`EntityRef`] if it contains a [`Component`] of type `T`.
@@ -1153,6 +1223,7 @@ impl<T: Kind> ContainsInstance<T> for InstanceCommands<'_, T> {
 /// world.trigger_with(Eat { target: fruit }, EntityTrigger);
 /// ```
 #[macro_export]
+#[deprecated]
 macro_rules! impl_entity_event_from_instance {
     ($name:ident < $($gen:tt),+ $(,)? > $(where $($where:tt)+)? ) => {
         $crate::impl_entity_event_from_instance!($name<$($gen),+> { .instance, .. } $(where $($where)+)?);
