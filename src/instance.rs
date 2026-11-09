@@ -671,12 +671,6 @@ impl<T: Component> Deref for InstanceRef<'_, T> {
     }
 }
 
-impl<T: Component> AsRef<Instance<T>> for InstanceRef<'_, T> {
-    fn as_ref(&self) -> &Instance<T> {
-        &self.0
-    }
-}
-
 impl<T: Component> AsRef<T> for InstanceRef<'_, T> {
     fn as_ref(&self) -> &T {
         self.1
@@ -889,12 +883,6 @@ impl<T: Component> Deref for InstanceMut<'_, T> {
 impl<T: Component> DerefMut for InstanceMut<'_, T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.1.as_mut()
-    }
-}
-
-impl<T: Component> AsRef<Instance<T>> for InstanceMut<'_, T> {
-    fn as_ref(&self) -> &Instance<T> {
-        &self.0
     }
 }
 
